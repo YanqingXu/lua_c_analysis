@@ -1,76 +1,76 @@
-# Lua 5.1 内部实现架构深度解析
+# <span style="color: #2E86AB">Lua 5.1 内部实现架构深度解析</span>
 
-## 通俗概述
+## <span style="color: #A23B72">通俗概述</span>
 
-Lua 5.1 是一个精心设计的编程语言实现，它将复杂的计算机科学概念转化为优雅而高效的代码。理解Lua的内部架构，就像理解一座现代化城市的运作机制一样，需要从多个角度来观察和分析。
+<span style="color: #F18F01">Lua 5.1</span> 是一个精心设计的编程语言实现，它将复杂的计算机科学概念转化为优雅而高效的代码。理解<span style="color: #F18F01">Lua</span>的内部架构，就像理解一座现代化城市的运作机制一样，需要从多个角度来观察和分析。
 
-**多角度理解Lua架构**：
+**<span style="color: #A23B72">多角度理解Lua架构</span>**：
 
-1. **现代化城市规划视角**：
-   - **Lua架构**：就像一座精心规划的现代化城市，每个区域都有明确的功能定位
-   - **虚拟机核心**：就像城市的中央商务区，是所有活动的核心枢纽
-   - **内存管理**：就像城市的基础设施系统，负责资源的分配和回收
-   - **类型系统**：就像城市的分区规划，为不同类型的数据提供合适的存储空间
-   - **API接口**：就像城市的交通网络，连接内部系统与外部世界
+1. **<span style="color: #2E86AB">现代化城市规划视角</span>**：
+   - **<span style="color: #C73E1D">Lua架构</span>**：就像一座精心规划的现代化城市，每个区域都有明确的功能定位
+   - **<span style="color: #C73E1D">虚拟机核心</span>**：就像城市的中央商务区，是所有活动的核心枢纽
+   - **<span style="color: #C73E1D">内存管理</span>**：就像城市的基础设施系统，负责资源的分配和回收
+   - **<span style="color: #C73E1D">类型系统</span>**：就像城市的分区规划，为不同类型的数据提供合适的存储空间
+   - **<span style="color: #C73E1D">API接口</span>**：就像城市的交通网络，连接内部系统与外部世界
 
-2. **精密制表工艺视角**：
-   - **Lua架构**：就像瑞士精密手表的内部机械结构，每个组件都精确配合
-   - **字节码执行**：就像手表的主发条，驱动整个系统的运转
-   - **栈管理**：就像手表的齿轮传动系统，精确地传递和转换数据
-   - **垃圾回收**：就像手表的自动上链机制，自动维护系统的正常运行
-   - **编译器**：就像制表师的工具，将设计图纸转化为实际的机械结构
+2. **<span style="color: #2E86AB">精密制表工艺视角</span>**：
+   - **<span style="color: #C73E1D">Lua架构</span>**：就像瑞士精密手表的内部机械结构，每个组件都精确配合
+   - **<span style="color: #C73E1D">字节码执行</span>**：就像手表的主发条，驱动整个系统的运转
+   - **<span style="color: #C73E1D">栈管理</span>**：就像手表的齿轮传动系统，精确地传递和转换数据
+   - **<span style="color: #C73E1D">垃圾回收</span>**：就像手表的自动上链机制，自动维护系统的正常运行
+   - **<span style="color: #C73E1D">编译器</span>**：就像制表师的工具，将设计图纸转化为实际的机械结构
 
-3. **交响乐团演奏视角**：
-   - **Lua架构**：就像一个完整的交响乐团，各个声部协调配合演奏美妙的音乐
-   - **虚拟机指挥**：就像乐团指挥，协调各个组件的执行时机和节奏
-   - **数据类型**：就像不同的乐器组，每种类型都有其独特的表现力
-   - **函数调用**：就像音乐的主题变奏，在不同的上下文中展现不同的效果
-   - **错误处理**：就像乐团的应急预案，确保演出的连续性和质量
+3. **<span style="color: #2E86AB">交响乐团演奏视角</span>**：
+   - **<span style="color: #C73E1D">Lua架构</span>**：就像一个完整的交响乐团，各个声部协调配合演奏美妙的音乐
+   - **<span style="color: #C73E1D">虚拟机指挥</span>**：就像乐团指挥，协调各个组件的执行时机和节奏
+   - **<span style="color: #C73E1D">数据类型</span>**：就像不同的乐器组，每种类型都有其独特的表现力
+   - **<span style="color: #C73E1D">函数调用</span>**：就像音乐的主题变奏，在不同的上下文中展现不同的效果
+   - **<span style="color: #C73E1D">错误处理</span>**：就像乐团的应急预案，确保演出的连续性和质量
 
-4. **生态系统运作视角**：
-   - **Lua架构**：就像一个平衡的生态系统，各个组件相互依存、协调发展
-   - **内存分配**：就像生态系统的资源循环，确保资源的有效利用和可持续发展
-   - **对象生命周期**：就像生物的生命周期，从创建到消亡都有明确的管理机制
-   - **模块化设计**：就像生态系统的食物链，每个层次都有其特定的功能和作用
-   - **扩展机制**：就像生态系统的适应性，能够根据环境变化进行调整和扩展
+4. **<span style="color: #2E86AB">生态系统运作视角</span>**：
+   - **<span style="color: #C73E1D">Lua架构</span>**：就像一个平衡的生态系统，各个组件相互依存、协调发展
+   - **<span style="color: #C73E1D">内存分配</span>**：就像生态系统的资源循环，确保资源的有效利用和可持续发展
+   - **<span style="color: #C73E1D">对象生命周期</span>**：就像生物的生命周期，从创建到消亡都有明确的管理机制
+   - **<span style="color: #C73E1D">模块化设计</span>**：就像生态系统的食物链，每个层次都有其特定的功能和作用
+   - **<span style="color: #C73E1D">扩展机制</span>**：就像生态系统的适应性，能够根据环境变化进行调整和扩展
 
-**核心设计理念**：
-- **简洁性原则**：最小化核心功能，避免不必要的复杂性
-- **高效性追求**：在内存使用和执行速度之间找到最佳平衡点
-- **可嵌入性**：设计为可以轻松集成到其他应用程序中
-- **可扩展性**：提供灵活的扩展机制，支持自定义功能
-- **跨平台性**：纯C实现，确保在不同平台上的一致性
+**<span style="color: #A23B72">核心设计理念</span>**：
+- **<span style="color: #C73E1D">简洁性原则</span>**：最小化核心功能，避免不必要的复杂性
+- **<span style="color: #C73E1D">高效性追求</span>**：在内存使用和执行速度之间找到最佳平衡点
+- **<span style="color: #C73E1D">可嵌入性</span>**：设计为可以轻松集成到其他应用程序中
+- **<span style="color: #C73E1D">可扩展性</span>**：提供灵活的扩展机制，支持自定义功能
+- **<span style="color: #C73E1D">跨平台性</span>**：纯<span style="color: #F18F01">C</span>实现，确保在不同平台上的一致性
 
-**Lua架构的核心特性**：
-- **轻量级设计**：核心库小于200KB，内存占用极少
-- **动态类型系统**：运行时类型检查，提供灵活性
-- **自动内存管理**：垃圾回收机制，简化内存管理
-- **协程支持**：内置协程机制，支持协作式多任务
-- **元编程能力**：元表机制，支持运算符重载和行为定制
+**<span style="color: #A23B72">Lua架构的核心特性</span>**：
+- **<span style="color: #C73E1D">轻量级设计</span>**：核心库小于<span style="color: #F18F01">200KB</span>，内存占用极少
+- **<span style="color: #C73E1D">动态类型系统</span>**：运行时类型检查，提供灵活性
+- **<span style="color: #C73E1D">自动内存管理</span>**：垃圾回收机制，简化内存管理
+- **<span style="color: #C73E1D">协程支持</span>**：内置协程机制，支持协作式多任务
+- **<span style="color: #C73E1D">元编程能力</span>**：元表机制，支持运算符重载和行为定制
 
-**实际应用价值**：
-- **游戏开发**：作为脚本语言嵌入游戏引擎，提供灵活的游戏逻辑
-- **Web开发**：OpenResty等项目中作为高性能Web服务器的脚本语言
-- **嵌入式系统**：在资源受限的环境中提供脚本化能力
-- **配置管理**：作为配置文件格式，提供动态配置能力
-- **科学计算**：在某些科学计算领域作为胶水语言使用
+**<span style="color: #A23B72">实际应用价值</span>**：
+- **<span style="color: #C73E1D">游戏开发</span>**：作为脚本语言嵌入游戏引擎，提供灵活的游戏逻辑
+- **<span style="color: #C73E1D">Web开发</span>**：<span style="color: #F18F01">OpenResty</span>等项目中作为高性能Web服务器的脚本语言
+- **<span style="color: #C73E1D">嵌入式系统</span>**：在资源受限的环境中提供脚本化能力
+- **<span style="color: #C73E1D">配置管理</span>**：作为配置文件格式，提供动态配置能力
+- **<span style="color: #C73E1D">科学计算</span>**：在某些科学计算领域作为胶水语言使用
 
-**学习Lua架构的意义**：
-- **编程语言设计**：理解现代编程语言的设计原则和实现技巧
-- **虚拟机技术**：掌握虚拟机设计和优化的核心概念
-- **系统编程**：学习高效的C语言编程技巧和系统设计方法
-- **性能优化**：理解性能优化的系统性方法和实践技巧
-- **架构设计**：学习如何设计简洁而强大的软件架构
+**<span style="color: #A23B72">学习Lua架构的意义</span>**：
+- **<span style="color: #C73E1D">编程语言设计</span>**：理解现代编程语言的设计原则和实现技巧
+- **<span style="color: #C73E1D">虚拟机技术</span>**：掌握虚拟机设计和优化的核心概念
+- **<span style="color: #C73E1D">系统编程</span>**：学习高效的<span style="color: #F18F01">C语言</span>编程技巧和系统设计方法
+- **<span style="color: #C73E1D">性能优化</span>**：理解性能优化的系统性方法和实践技巧
+- **<span style="color: #C73E1D">架构设计</span>**：学习如何设计简洁而强大的软件架构
 
-## 技术概述
+## <span style="color: #A23B72">技术概述</span>
 
-Lua 5.1 是一个轻量级、高性能的脚本语言解释器，其核心设计思想是简洁性和高效性。它采用了多项先进的计算机科学技术，包括基于寄存器的虚拟机、增量垃圾回收、协程机制等，创造了一个既强大又优雅的编程语言实现。
+<span style="color: #F18F01">Lua 5.1</span> 是一个轻量级、高性能的脚本语言解释器，其核心设计思想是<span style="color: #C73E1D">简洁性</span>和<span style="color: #C73E1D">高效性</span>。它采用了多项先进的计算机科学技术，包括<span style="color: #F18F01">基于寄存器的虚拟机</span>、<span style="color: #F18F01">增量垃圾回收</span>、<span style="color: #F18F01">协程机制</span>等，创造了一个既强大又优雅的编程语言实现。
 
-## 架构概览详解
+## <span style="color: #A23B72">架构概览详解</span>
 
-### 整体架构层次
+### <span style="color: #2E86AB">整体架构层次</span>
 
-Lua 的架构采用分层设计，每一层都有明确的职责和接口，形成了一个清晰的技术栈：
+<span style="color: #F18F01">Lua</span> 的架构采用<span style="color: #C73E1D">分层设计</span>，每一层都有明确的职责和接口，形成了一个清晰的技术栈：
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -132,7 +132,7 @@ Lua 的架构采用分层设计，每一层都有明确的职责和接口，形�
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### 核心组件关系图
+### <span style="color: #2E86AB">核心组件关系图</span>
 
 ```
                     ┌─────────────────┐
@@ -155,7 +155,7 @@ Lua 的架构采用分层设计，每一层都有明确的职责和接口，形�
               └─────────────────┘   └─────────────────┘   └─────────────────┘
 ```
 
-### 数据流向分析
+### <span style="color: #2E86AB">数据流向分析</span>
 
 ```
 源代码 → 词法分析 → Token流 → 语法分析 → AST → 代码生成 → 字节码 → 虚拟机执行
@@ -165,7 +165,7 @@ Lua 的架构采用分层设计，每一层都有明确的职责和接口，形�
    └─── 错误处理 ←─── 异常捕获 ←─── 运行时错误 ←─── 执行引擎 ←─── 指令解释
 ```
 
-### 内存管理架构
+### <span style="color: #2E86AB">内存管理架构</span>
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -188,13 +188,13 @@ Lua 的架构采用分层设计，每一层都有明确的职责和接口，形�
               └───────────────┘
 ```
 
-## 核心组件深度解析
+## <span style="color: #A23B72">核心组件深度解析</span>
 
-### 1. 类型系统 (Type System)
+### <span style="color: #2E86AB">1. 类型系统 (Type System)</span>
 
-**技术概述**：Lua的类型系统是动态类型系统的典型实现，通过Tagged Values机制实现了高效的类型表示和检查。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的类型系统</span>是<span style="color: #C73E1D">动态类型系统</span>的典型实现，通过<span style="color: #F18F01">Tagged Values</span>机制实现了高效的类型表示和检查。
 
-#### 基本类型体系
+#### <span style="color: #C73E1D">基本类型体系</span>
 ```c
 // 基本类型常量定义 (lobject.h)
 #define LUA_TNIL           0    // nil类型
@@ -208,7 +208,7 @@ Lua 的架构采用分层设计，每一层都有明确的职责和接口，形�
 #define LUA_TTHREAD        8    // 线程类型
 ```
 
-#### Tagged Values机制
+#### <span style="color: #C73E1D">Tagged Values机制</span>
 ```c
 // 统一值表示 (lobject.h)
 typedef union {
@@ -224,13 +224,13 @@ typedef struct lua_TValue {
 } TValue;
 ```
 
-**设计优势**：
-- **内存效率**：所有值都使用相同大小的结构体表示
-- **类型安全**：运行时类型检查确保操作的正确性
-- **垃圾回收**：统一的GC对象管理机制
-- **性能优化**：类型检查通过简单的整数比较实现
+**<span style="color: #A23B72">设计优势</span>**：
+- **<span style="color: #C73E1D">内存效率</span>**：所有值都使用相同大小的结构体表示
+- **<span style="color: #C73E1D">类型安全</span>**：运行时类型检查确保操作的正确性
+- **<span style="color: #C73E1D">垃圾回收</span>**：统一的<span style="color: #F18F01">GC</span>对象管理机制
+- **<span style="color: #C73E1D">性能优化</span>**：类型检查通过简单的整数比较实现
 
-#### 类型检查宏系统
+#### <span style="color: #C73E1D">类型检查宏系统</span>
 ```c
 // 高效的类型检查宏 (lobject.h)
 #define ttisnil(o)          (ttype(o) == LUA_TNIL)
@@ -243,11 +243,11 @@ typedef struct lua_TValue {
 #define ttisthread(o)       (ttype(o) == LUA_TTHREAD)
 ```
 
-### 2. 状态管理 (State Management)
+### <span style="color: #2E86AB">2. 状态管理 (State Management)</span>
 
-**技术概述**：Lua的状态管理采用分层设计，全局状态和线程状态分离，支持多线程和协程机制。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的状态管理</span>采用<span style="color: #C73E1D">分层设计</span>，<span style="color: #C73E1D">全局状态</span>和<span style="color: #C73E1D">线程状态</span>分离，支持多线程和协程机制。
 
-#### 全局状态结构
+#### <span style="color: #C73E1D">全局状态结构</span>
 ```c
 // 全局状态 (lstate.h)
 typedef struct global_State {
@@ -279,7 +279,7 @@ typedef struct global_State {
 } global_State;
 ```
 
-#### 线程状态结构
+#### <span style="color: #C73E1D">线程状态结构</span>
 ```c
 // 线程状态 (lstate.h)
 struct lua_State {
@@ -312,17 +312,17 @@ struct lua_State {
 };
 ```
 
-**状态管理特点**：
-- **分离设计**：全局状态和线程状态分离，支持多线程
-- **协程支持**：每个协程都有独立的线程状态
-- **错误处理**：内置错误恢复机制
-- **调试支持**：完整的调试钩子系统
+**<span style="color: #A23B72">状态管理特点</span>**：
+- **<span style="color: #C73E1D">分离设计</span>**：全局状态和线程状态分离，支持多线程
+- **<span style="color: #C73E1D">协程支持</span>**：每个协程都有独立的线程状态
+- **<span style="color: #C73E1D">错误处理</span>**：内置错误恢复机制
+- **<span style="color: #C73E1D">调试支持</span>**：完整的调试钩子系统
 
-### 3. 虚拟机执行引擎 (Virtual Machine)
+### <span style="color: #2E86AB">3. 虚拟机执行引擎 (Virtual Machine)</span>
 
-**技术概述**：Lua虚拟机采用基于寄存器的架构，使用字节码指令执行，具有高效的指令分发和执行机制。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua虚拟机</span>采用<span style="color: #F18F01">基于寄存器的架构</span>，使用<span style="color: #C73E1D">字节码指令</span>执行，具有高效的指令分发和执行机制。
 
-#### 虚拟机架构特点
+#### <span style="color: #C73E1D">虚拟机架构特点</span>
 ```c
 // 虚拟机主循环 (lvm.c)
 void luaV_execute (lua_State *L, int nexeccalls) {
@@ -359,17 +359,17 @@ void luaV_execute (lua_State *L, int nexeccalls) {
 }
 ```
 
-#### 指令集设计
-- **基于寄存器**：减少指令数量，提高执行效率
-- **固定长度**：32位指令，简化解码过程
-- **多种格式**：iABC、iABx、iAsBx三种格式
-- **优化指令**：针对常见操作的特殊指令
+#### <span style="color: #C73E1D">指令集设计</span>
+- **<span style="color: #C73E1D">基于寄存器</span>**：减少指令数量，提高执行效率
+- **<span style="color: #C73E1D">固定长度</span>**：<span style="color: #F18F01">32位</span>指令，简化解码过程
+- **<span style="color: #C73E1D">多种格式</span>**：<span style="color: #F18F01">iABC</span>、<span style="color: #F18F01">iABx</span>、<span style="color: #F18F01">iAsBx</span>三种格式
+- **<span style="color: #C73E1D">优化指令</span>**：针对常见操作的特殊指令
 
-### 4. 内存管理系统 (Memory Management)
+### <span style="color: #2E86AB">4. 内存管理系统 (Memory Management)</span>
 
-**技术概述**：Lua的内存管理采用垃圾回收机制，结合增量标记-清除算法和分代回收策略。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的内存管理</span>采用<span style="color: #C73E1D">垃圾回收机制</span>，结合<span style="color: #F18F01">增量标记-清除算法</span>和<span style="color: #F18F01">分代回收策略</span>。
 
-#### 垃圾回收器设计
+#### <span style="color: #C73E1D">垃圾回收器设计</span>
 ```c
 // GC状态定义 (lgc.h)
 #define GCSpropagate    0   // 传播阶段
@@ -379,7 +379,7 @@ void luaV_execute (lua_State *L, int nexeccalls) {
 #define GCSpause        4   // 暂停阶段
 ```
 
-#### 内存分配接口
+#### <span style="color: #C73E1D">内存分配接口</span>
 ```c
 // 统一内存分配接口 (lmem.c)
 void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
@@ -400,19 +400,19 @@ void *luaM_realloc_ (lua_State *L, void *block, size_t osize, size_t nsize) {
 }
 ```
 
-**内存管理特点**：
-- **统一接口**：所有内存操作通过统一接口
-- **增量回收**：减少GC停顿时间
-- **可定制**：支持自定义内存分配器
-- **统计监控**：完整的内存使用统计
+**<span style="color: #A23B72">内存管理特点</span>**：
+- **<span style="color: #C73E1D">统一接口</span>**：所有内存操作通过统一接口
+- **<span style="color: #C73E1D">增量回收</span>**：减少<span style="color: #F18F01">GC</span>停顿时间
+- **<span style="color: #C73E1D">可定制</span>**：支持自定义内存分配器
+- **<span style="color: #C73E1D">统计监控</span>**：完整的内存使用统计
 
-## 关键数据结构深度分析
+## <span style="color: #A23B72">关键数据结构深度分析</span>
 
-### 1. TValue (Tagged Value) - 统一值表示
+### <span style="color: #2E86AB">1. TValue (Tagged Value) - 统一值表示</span>
 
-**技术概述**：TValue是Lua中所有值的统一表示，通过联合体和类型标记实现了高效的动态类型系统。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">TValue</span>是<span style="color: #F18F01">Lua</span>中所有值的统一表示，通过<span style="color: #C73E1D">联合体</span>和<span style="color: #C73E1D">类型标记</span>实现了高效的动态类型系统。
 
-#### 完整结构定义
+#### <span style="color: #C73E1D">完整结构定义</span>
 ```c
 // 值联合体 (lobject.h)
 typedef union {
@@ -429,7 +429,7 @@ typedef struct lua_TValue {
 } TValue;
 ```
 
-#### 类型标记系统
+#### <span style="color: #C73E1D">类型标记系统</span>
 ```c
 // 类型常量 (lua.h)
 #define LUA_TNIL           0
@@ -448,7 +448,7 @@ typedef struct lua_TValue {
 #define LUA_TDEADKEY    (LAST_TAG+3)
 ```
 
-#### 值操作宏系统
+#### <span style="color: #C73E1D">值操作宏系统</span>
 ```c
 // 类型检查宏 (lobject.h)
 #define ttype(o)        ((o)->tt)
@@ -486,17 +486,17 @@ typedef struct lua_TValue {
     checkliveness(G(L),i_o); }
 ```
 
-**设计优势**：
-- **内存效率**：所有值使用相同大小的结构
-- **类型安全**：编译时和运行时类型检查
-- **性能优化**：类型检查通过简单比较实现
-- **扩展性**：易于添加新的数据类型
+**<span style="color: #A23B72">设计优势</span>**：
+- **<span style="color: #C73E1D">内存效率</span>**：所有值使用相同大小的结构
+- **<span style="color: #C73E1D">类型安全</span>**：编译时和运行时类型检查
+- **<span style="color: #C73E1D">性能优化</span>**：类型检查通过简单比较实现
+- **<span style="color: #C73E1D">扩展性</span>**：易于添加新的数据类型
 
-### 2. GCObject (垃圾回收对象)
+### <span style="color: #2E86AB">2. GCObject (垃圾回收对象)</span>
 
-**技术概述**：GCObject是所有需要垃圾回收的对象的基类，提供了统一的GC管理机制。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">GCObject</span>是所有需要垃圾回收的对象的基类，提供了统一的<span style="color: #F18F01">GC</span>管理机制。
 
-#### GC对象头部结构
+#### <span style="color: #C73E1D">GC对象头部结构</span>
 ```c
 // GC对象通用头部 (lobject.h)
 #define CommonHeader    GCObject *next; lu_byte tt; lu_byte marked
@@ -519,7 +519,7 @@ typedef struct GCheader {
 } GCheader;
 ```
 
-#### GC标记系统
+#### <span style="color: #C73E1D">GC标记系统</span>
 ```c
 // GC颜色标记 (lgc.h)
 #define WHITE0BIT       0  // 白色0位
@@ -538,11 +538,11 @@ typedef struct GCheader {
 #define isgray(x)       (!isblack(x) && !iswhite(x))
 ```
 
-### 3. String (字符串对象)
+### <span style="color: #2E86AB">3. String (字符串对象)</span>
 
-**技术概述**：Lua的字符串系统采用驻留机制，所有相同的字符串共享同一个对象。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的字符串系统</span>采用<span style="color: #F18F01">驻留机制</span>，所有相同的字符串共享同一个对象。
 
-#### 字符串对象结构
+#### <span style="color: #C73E1D">字符串对象结构</span>
 ```c
 // 字符串对象 (lobject.h)
 typedef union TString {
@@ -560,7 +560,7 @@ typedef union TString {
 #define svalue(o)       getstr(rawtsvalue(o))
 ```
 
-#### 字符串表结构
+#### <span style="color: #C73E1D">字符串表结构</span>
 ```c
 // 字符串表 (lstate.h)
 typedef struct stringtable {
@@ -570,17 +570,17 @@ typedef struct stringtable {
 } stringtable;
 ```
 
-**字符串特点**：
-- **驻留机制**：相同字符串共享内存
-- **哈希优化**：预计算哈希值，快速比较
-- **不可变性**：字符串创建后不可修改
-- **内存效率**：紧凑的内存布局
+**<span style="color: #A23B72">字符串特点</span>**：
+- **<span style="color: #C73E1D">驻留机制</span>**：相同字符串共享内存
+- **<span style="color: #C73E1D">哈希优化</span>**：预计算哈希值，快速比较
+- **<span style="color: #C73E1D">不可变性</span>**：字符串创建后不可修改
+- **<span style="color: #C73E1D">内存效率</span>**：紧凑的内存布局
 
-### 4. Table (表对象)
+### <span style="color: #2E86AB">4. Table (表对象)</span>
 
-**技术概述**：Lua的表是唯一的数据结构，同时支持数组和哈希表功能。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的表</span>是唯一的数据结构，同时支持<span style="color: #C73E1D">数组</span>和<span style="color: #C73E1D">哈希表</span>功能。
 
-#### 表对象结构
+#### <span style="color: #C73E1D">表对象结构</span>
 ```c
 // 表对象 (lobject.h)
 typedef struct Table {
@@ -612,20 +612,20 @@ typedef union TKey {
 } TKey;
 ```
 
-**表设计特点**：
-- **混合结构**：数组部分和哈希部分并存
-- **动态调整**：根据使用模式自动调整结构
-- **元表支持**：完整的元编程机制
-- **性能优化**：针对不同访问模式的优化
+**<span style="color: #A23B72">表设计特点</span>**：
+- **<span style="color: #C73E1D">混合结构</span>**：数组部分和哈希部分并存
+- **<span style="color: #C73E1D">动态调整</span>**：根据使用模式自动调整结构
+- **<span style="color: #C73E1D">元表支持</span>**：完整的元编程机制
+- **<span style="color: #C73E1D">性能优化</span>**：针对不同访问模式的优化
 
-## 常见后续问题详解
+## <span style="color: #A23B72">常见后续问题详解</span>
 
-### 1. Lua为什么选择基于寄存器的虚拟机架构？
+### <span style="color: #2E86AB">1. Lua为什么选择基于寄存器的虚拟机架构？</span>
 
-**技术原理**：
-Lua选择基于寄存器的虚拟机架构是经过深思熟虑的设计决策，主要考虑执行效率和指令简洁性。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua</span>选择<span style="color: #F18F01">基于寄存器的虚拟机架构</span>是经过深思熟虑的设计决策，主要考虑<span style="color: #C73E1D">执行效率</span>和<span style="color: #C73E1D">指令简洁性</span>。
 
-**寄存器架构vs栈架构的详细对比**：
+**<span style="color: #A23B72">寄存器架构vs栈架构的详细对比</span>**：
 ```c
 // 寄存器架构vs栈架构的性能对比
 /*
@@ -654,12 +654,12 @@ Lua选择基于寄存器的虚拟机架构是经过深思熟虑的设计决策�
 */
 ```
 
-### 2. Lua的内存管理策略有什么特点？
+### <span style="color: #2E86AB">2. Lua的内存管理策略有什么特点？</span>
 
-**技术原理**：
-Lua的内存管理采用垃圾回收机制，结合增量标记-清除算法和多种优化策略。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua的内存管理</span>采用<span style="color: #C73E1D">垃圾回收机制</span>，结合<span style="color: #F18F01">增量标记-清除算法</span>和多种优化策略。
 
-**内存管理的核心特点**：
+**<span style="color: #A23B72">内存管理的核心特点</span>**：
 ```c
 // lgc.c - 垃圾回收的核心实现
 /*
@@ -690,12 +690,12 @@ GCSpause → GCSpropagate → GCSatomic → GCSsweepstring → GCSsweep → GCSp
 */
 ```
 
-### 3. Lua的类型系统是如何实现动态类型的？
+### <span style="color: #2E86AB">3. Lua的类型系统是如何实现动态类型的？</span>
 
-**技术原理**：
-Lua通过Tagged Values机制实现了高效的动态类型系统，在运行时进行类型检查和转换。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua</span>通过<span style="color: #F18F01">Tagged Values</span>机制实现了高效的<span style="color: #C73E1D">动态类型系统</span>，在运行时进行类型检查和转换。
 
-**动态类型系统的实现机制**：
+**<span style="color: #A23B72">动态类型系统的实现机制</span>**：
 ```c
 // lobject.c - 动态类型系统的实现
 /*
@@ -736,12 +736,12 @@ static int luaV_tonumber (const TValue *obj, lua_Number *n) {
 }
 ```
 
-### 4. Lua的函数调用机制是如何工作的？
+### <span style="color: #2E86AB">4. Lua的函数调用机制是如何工作的？</span>
 
-**技术原理**：
-Lua的函数调用采用栈帧管理机制，支持尾调用优化、可变参数和闭包等高级特性。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua的函数调用</span>采用<span style="color: #C73E1D">栈帧管理机制</span>，支持<span style="color: #F18F01">尾调用优化</span>、<span style="color: #F18F01">可变参数</span>和<span style="color: #F18F01">闭包</span>等高级特性。
 
-**函数调用的完整流程**：
+**<span style="color: #A23B72">函数调用的完整流程</span>**：
 ```c
 // ldo.c - 函数调用的实现
 /*
@@ -775,12 +775,12 @@ Lua的函数调用采用栈帧管理机制，支持尾调用优化、可变参�
 */
 ```
 
-### 5. Lua的协程机制是如何实现的？
+### <span style="color: #2E86AB">5. Lua的协程机制是如何实现的？</span>
 
-**技术原理**：
-Lua的协程采用非对称协程模型，通过独立的执行栈和状态管理实现协作式多任务。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua的协程</span>采用<span style="color: #F18F01">非对称协程模型</span>，通过<span style="color: #C73E1D">独立的执行栈</span>和<span style="color: #C73E1D">状态管理</span>实现协作式多任务。
 
-**协程实现的核心机制**：
+**<span style="color: #A23B72">协程实现的核心机制</span>**：
 ```c
 // lstate.c - 协程状态管理
 /*
@@ -815,11 +815,11 @@ Lua的协程采用非对称协程模型，通过独立的执行栈和状态管�
 */
 ```
 
-## 实践应用指南
+## <span style="color: #A23B72">实践应用指南</span>
 
-### 1. Lua架构学习路径
+### <span style="color: #2E86AB">1. Lua架构学习路径</span>
 
-**初级阶段：理解基础概念**
+**<span style="color: #A23B72">初级阶段：理解基础概念</span>**
 ```c
 // 学习重点：基础数据结构和类型系统
 /*
@@ -847,7 +847,7 @@ Lua的协程采用非对称协程模型，通过独立的执行栈和状态管�
 */
 ```
 
-**中级阶段：深入核心机制**
+**<span style="color: #A23B72">中级阶段：深入核心机制</span>**
 ```c
 // 学习重点：虚拟机和编译器
 /*
@@ -875,7 +875,7 @@ Lua的协程采用非对称协程模型，通过独立的执行栈和状态管�
 */
 ```
 
-**高级阶段：掌握优化技术**
+**<span style="color: #A23B72">高级阶段：掌握优化技术</span>**
 ```c
 // 学习重点：性能优化和高级特性
 /*
@@ -903,9 +903,9 @@ Lua的协程采用非对称协程模型，通过独立的执行栈和状态管�
 */
 ```
 
-### 2. 源码阅读技巧
+### <span style="color: #2E86AB">2. 源码阅读技巧</span>
 
-**代码导航策略**：
+**<span style="color: #A23B72">代码导航策略</span>**：
 ```c
 // 高效的源码阅读方法
 /*
@@ -958,9 +958,9 @@ static void debugging_techniques() {
 }
 ```
 
-### 3. 扩展和定制指南
+### <span style="color: #2E86AB">3. 扩展和定制指南</span>
 
-**C API使用最佳实践**：
+**<span style="color: #A23B72">C API使用最佳实践</span>**：
 ```c
 // C API的高效使用方法
 /*
@@ -1017,9 +1017,9 @@ static void *custom_allocator(void *ud, void *ptr, size_t osize, size_t nsize) {
 }
 ```
 
-### 4. 性能调优指南
+### <span style="color: #2E86AB">4. 性能调优指南</span>
 
-**性能分析方法**：
+**<span style="color: #A23B72">性能分析方法</span>**：
 ```c
 // 系统性的性能分析方法
 /*
@@ -1067,52 +1067,52 @@ static void gc_tuning_guide() {
 }
 ```
 
-## 模块组织
+## <span style="color: #A23B72">模块组织</span>
 
 | 模块 | 文件 | 功能描述 |
 |------|------|----------|
-| **核心API** | lapi.c, lapi.h | C API 实现 |
-| **虚拟机** | lvm.c, lvm.h | 字节码执行引擎 |
-| **解析器** | lparser.c, lparser.h | 语法分析器 |
-| **词法分析** | llex.c, llex.h | 词法分析器 |
-| **代码生成** | lcode.c, lcode.h | 字节码生成 |
-| **对象系统** | lobject.c, lobject.h | 基础对象定义 |
-| **表实现** | ltable.c, ltable.h | 表数据结构 |
-| **字符串** | lstring.c, lstring.h | 字符串管理 |
-| **函数** | lfunc.c, lfunc.h | 函数对象管理 |
-| **垃圾回收** | lgc.c, lgc.h | 垃圾回收器 |
-| **内存管理** | lmem.c, lmem.h | 内存分配 |
-| **栈操作** | ldo.c, ldo.h | 栈管理和函数调用 |
-| **调试支持** | ldebug.c, ldebug.h | 调试信息 |
-| **标准库** | l*lib.c | 各种标准库实现 |
+| **<span style="color: #C73E1D">核心API</span>** | <span style="color: #C73E1D">lapi.c, lapi.h</span> | C API 实现 |
+| **<span style="color: #C73E1D">虚拟机</span>** | <span style="color: #C73E1D">lvm.c, lvm.h</span> | 字节码执行引擎 |
+| **<span style="color: #C73E1D">解析器</span>** | <span style="color: #C73E1D">lparser.c, lparser.h</span> | 语法分析器 |
+| **<span style="color: #C73E1D">词法分析</span>** | <span style="color: #C73E1D">llex.c, llex.h</span> | 词法分析器 |
+| **<span style="color: #C73E1D">代码生成</span>** | <span style="color: #C73E1D">lcode.c, lcode.h</span> | 字节码生成 |
+| **<span style="color: #C73E1D">对象系统</span>** | <span style="color: #C73E1D">lobject.c, lobject.h</span> | 基础对象定义 |
+| **<span style="color: #C73E1D">表实现</span>** | <span style="color: #C73E1D">ltable.c, ltable.h</span> | 表数据结构 |
+| **<span style="color: #C73E1D">字符串</span>** | <span style="color: #C73E1D">lstring.c, lstring.h</span> | 字符串管理 |
+| **<span style="color: #C73E1D">函数</span>** | <span style="color: #C73E1D">lfunc.c, lfunc.h</span> | 函数对象管理 |
+| **<span style="color: #C73E1D">垃圾回收</span>** | <span style="color: #C73E1D">lgc.c, lgc.h</span> | 垃圾回收器 |
+| **<span style="color: #C73E1D">内存管理</span>** | <span style="color: #C73E1D">lmem.c, lmem.h</span> | 内存分配 |
+| **<span style="color: #C73E1D">栈操作</span>** | <span style="color: #C73E1D">ldo.c, ldo.h</span> | 栈管理和函数调用 |
+| **<span style="color: #C73E1D">调试支持</span>** | <span style="color: #C73E1D">ldebug.c, ldebug.h</span> | 调试信息 |
+| **<span style="color: #C73E1D">标准库</span>** | <span style="color: #C73E1D">l*lib.c</span> | 各种标准库实现 |
 
-## 详细文档导航
+## <span style="color: #A23B72">详细文档导航</span>
 
-### 核心系统
-- [对象系统详解](wiki_object.md) - 类型系统和值表示机制
-- [表实现详解](wiki_table.md) - Lua表的混合数据结构实现
-- [函数系统详解](wiki_function.md) - 函数定义、闭包和调用机制
-- [调用栈管理详解](wiki_call.md) - 函数调用、参数传递和返回值处理
-- [虚拟机执行详解](wiki_vm.md) - 字节码执行和运行时系统
-- [垃圾回收器详解](wiki_gc.md) - 内存管理和垃圾回收算法
+### <span style="color: #2E86AB">核心系统</span>
+- <span style="color: #C73E1D">[对象系统详解](wiki_object.md)</span> - 类型系统和值表示机制
+- <span style="color: #C73E1D">[表实现详解](wiki_table.md)</span> - Lua表的混合数据结构实现
+- <span style="color: #C73E1D">[函数系统详解](wiki_function.md)</span> - 函数定义、闭包和调用机制
+- <span style="color: #C73E1D">[调用栈管理详解](wiki_call.md)</span> - 函数调用、参数传递和返回值处理
+- <span style="color: #C73E1D">[虚拟机执行详解](wiki_vm.md)</span> - 字节码执行和运行时系统
+- <span style="color: #C73E1D">[垃圾回收器详解](wiki_gc.md)</span> - 内存管理和垃圾回收算法
 
-### 标准库
-- [基础库详解](wiki_lib_base.md) - 基础函数库实现
-- [字符串库详解](wiki_lib_string.md) - 字符串操作和模式匹配
+### <span style="color: #2E86AB">标准库</span>
+- <span style="color: #C73E1D">[基础库详解](wiki_lib_base.md)</span> - 基础函数库实现
+- <span style="color: #C73E1D">[字符串库详解](wiki_lib_string.md)</span> - 字符串操作和模式匹配
 
-### 编译系统
-- [词法分析器](wiki_lexer.md) - 词法分析和标记生成
-- [语法解析器](wiki_parser.md) - 语法分析和抽象语法树
-- [代码生成器](wiki_codegen.md) - 字节码生成和优化
+### <span style="color: #2E86AB">编译系统</span>
+- <span style="color: #C73E1D">[词法分析器](wiki_lexer.md)</span> - 词法分析和标记生成
+- <span style="color: #C73E1D">[语法解析器](wiki_parser.md)</span> - 语法分析和抽象语法树
+- <span style="color: #C73E1D">[代码生成器](wiki_codegen.md)</span> - 字节码生成和优化
 
-### 扩展系统
-- [C API详解](wiki_api.md) - C语言接口和扩展机制
-- [调试系统](wiki_debug.md) - 调试支持和钩子机制
-- [模块系统](wiki_module.md) - 模块加载和管理
+### <span style="color: #2E86AB">扩展系统</span>
+- <span style="color: #C73E1D">[C API详解](wiki_api.md)</span> - C语言接口和扩展机制
+- <span style="color: #C73E1D">[调试系统](wiki_debug.md)</span> - 调试支持和钩子机制
+- <span style="color: #C73E1D">[模块系统](wiki_module.md)</span> - 模块加载和管理
 
-## 编译和构建
+## <span style="color: #A23B72">编译和构建</span>
 
-Lua 5.1 使用简单的 Makefile 进行构建：
+<span style="color: #F18F01">Lua 5.1</span> 使用简单的 <span style="color: #F18F01">Makefile</span> 进行构建：
 
 ```bash
 make all      # 编译所有目标
@@ -1121,121 +1121,121 @@ make luac     # 编译字节码编译器
 ```
 
 主要的编译单元：
-- **lua**: 交互式解释器 (lua.c)
-- **luac**: 字节码编译器 (luac.c)
-- **liblua.a**: 静态库文件
+- **<span style="color: #C73E1D">lua</span>**: 交互式解释器 (<span style="color: #C73E1D">lua.c</span>)
+- **<span style="color: #C73E1D">luac</span>**: 字节码编译器 (<span style="color: #C73E1D">luac.c</span>)
+- **<span style="color: #C73E1D">liblua.a</span>**: 静态库文件
 
-## 设计哲学
+## <span style="color: #A23B72">设计哲学</span>
 
-Lua 的设计遵循以下原则：
+<span style="color: #F18F01">Lua</span> 的设计遵循以下原则：
 
-1. **简洁性**: 核心语言功能最小化
-2. **高效性**: 快速的执行速度和低内存占用
-3. **可扩展性**: 强大的C API和元编程能力
-4. **可移植性**: 标准C实现，易于移植
-5. **嵌入性**: 设计为嵌入式脚本语言
+1. **<span style="color: #C73E1D">简洁性</span>**: 核心语言功能最小化
+2. **<span style="color: #C73E1D">高效性</span>**: 快速的执行速度和低内存占用
+3. **<span style="color: #C73E1D">可扩展性</span>**: 强大的<span style="color: #F18F01">C API</span>和元编程能力
+4. **<span style="color: #C73E1D">可移植性</span>**: 标准<span style="color: #F18F01">C</span>实现，易于移植
+5. **<span style="color: #C73E1D">嵌入性</span>**: 设计为嵌入式脚本语言
 
-## 性能特性
+## <span style="color: #A23B72">性能特性</span>
 
-- **快速表访问**: 混合数组/哈希表实现
-- **增量垃圾回收**: 避免长时间暂停
-- **字符串内化**: 字符串去重和快速比较
-- **尾调用优化**: 递归函数的内存优化
-- **协程支持**: 轻量级线程实现
+- **<span style="color: #C73E1D">快速表访问</span>**: 混合数组/哈希表实现
+- **<span style="color: #C73E1D">增量垃圾回收</span>**: 避免长时间暂停
+- **<span style="color: #C73E1D">字符串内化</span>**: 字符串去重和快速比较
+- **<span style="color: #C73E1D">尾调用优化</span>**: 递归函数的内存优化
+- **<span style="color: #C73E1D">协程支持</span>**: 轻量级线程实现
 
-## 总结
+## <span style="color: #A23B72">总结</span>
 
-Lua 5.1 通过精心设计的架构和高效的实现，在保持语言简洁性的同时提供了出色的性能。其模块化的设计使得各个组件可以独立理解和修改，是学习解释器实现的优秀范例。
+<span style="color: #F18F01">Lua 5.1</span> 通过精心设计的架构和高效的实现，在保持语言简洁性的同时提供了出色的性能。其模块化的设计使得各个组件可以独立理解和修改，是学习解释器实现的优秀范例。
 
-## 与其他核心文档的关联
+## <span style="color: #A23B72">与其他核心文档的关联</span>
 
-### 深度技术文档系列
+### <span style="color: #2E86AB">深度技术文档系列</span>
 
-本文档作为Lua架构的总体概览，与以下深度技术文档形成完整的知识体系：
+本文档作为<span style="color: #F18F01">Lua架构</span>的总体概览，与以下深度技术文档形成完整的知识体系：
 
-#### 执行引擎系列
-- **虚拟机执行机制**：详细分析基于寄存器的虚拟机设计和指令执行流程
-- **栈管理机制**：深入解析函数调用栈的管理和优化策略
-- **字节码生成机制**：全面解释从源码到字节码的编译过程
+#### <span style="color: #C73E1D">执行引擎系列</span>
+- **<span style="color: #C73E1D">虚拟机执行机制</span>**：详细分析基于寄存器的虚拟机设计和指令执行流程
+- **<span style="color: #C73E1D">栈管理机制</span>**：深入解析函数调用栈的管理和优化策略
+- **<span style="color: #C73E1D">字节码生成机制</span>**：全面解释从源码到字节码的编译过程
 
-#### 内存管理系列
-- **垃圾回收机制**：深度分析增量标记-清除算法和优化技术
-- **字符串驻留机制**：详细解释字符串的内存优化和哈希管理
+#### <span style="color: #C73E1D">内存管理系列</span>
+- **<span style="color: #C73E1D">垃圾回收机制</span>**：深度分析增量标记-清除算法和优化技术
+- **<span style="color: #C73E1D">字符串驻留机制</span>**：详细解释字符串的内存优化和哈希管理
 
-#### 数据结构系列
-- **表实现机制**：深入分析Lua表的混合数据结构设计
-- **元表机制**：全面解释元编程和运算符重载的实现
+#### <span style="color: #C73E1D">数据结构系列</span>
+- **<span style="color: #C73E1D">表实现机制</span>**：深入分析<span style="color: #F18F01">Lua表</span>的混合数据结构设计
+- **<span style="color: #C73E1D">元表机制</span>**：全面解释元编程和运算符重载的实现
 
-#### 高级特性系列
-- **协程实现机制**：详细分析协作式多任务的实现原理
-- **C API设计机制**：深入解析C语言接口的设计和使用
-- **性能优化机制**：系统性分析Lua的各种性能优化技术
+#### <span style="color: #C73E1D">高级特性系列</span>
+- **<span style="color: #C73E1D">协程实现机制</span>**：详细分析协作式多任务的实现原理
+- **<span style="color: #C73E1D">C API设计机制</span>**：深入解析<span style="color: #F18F01">C语言</span>接口的设计和使用
+- **<span style="color: #C73E1D">性能优化机制</span>**：系统性分析<span style="color: #F18F01">Lua</span>的各种性能优化技术
 
-### 学习路径建议
+### <span style="color: #2E86AB">学习路径建议</span>
 
-#### 初学者路径
-1. **从本文档开始**：建立Lua架构的整体认知
-2. **类型系统和内存管理**：理解基础的数据表示和内存模型
-3. **虚拟机执行**：掌握程序的执行流程
-4. **编译过程**：了解从源码到字节码的转换
+#### <span style="color: #C73E1D">初学者路径</span>
+1. **<span style="color: #C73E1D">从本文档开始</span>**：建立<span style="color: #F18F01">Lua架构</span>的整体认知
+2. **<span style="color: #C73E1D">类型系统和内存管理</span>**：理解基础的数据表示和内存模型
+3. **<span style="color: #C73E1D">虚拟机执行</span>**：掌握程序的执行流程
+4. **<span style="color: #C73E1D">编译过程</span>**：了解从源码到字节码的转换
 
-#### 进阶开发者路径
-1. **深入虚拟机**：掌握指令执行和优化技术
-2. **内存管理优化**：理解垃圾回收和性能调优
-3. **高级数据结构**：掌握表和字符串的高效实现
-4. **扩展机制**：学习C API和元编程技术
+#### <span style="color: #C73E1D">进阶开发者路径</span>
+1. **<span style="color: #C73E1D">深入虚拟机</span>**：掌握指令执行和优化技术
+2. **<span style="color: #C73E1D">内存管理优化</span>**：理解垃圾回收和性能调优
+3. **<span style="color: #C73E1D">高级数据结构</span>**：掌握表和字符串的高效实现
+4. **<span style="color: #C73E1D">扩展机制</span>**：学习<span style="color: #F18F01">C API</span>和元编程技术
 
-#### 系统架构师路径
-1. **整体架构设计**：理解模块化和分层设计原则
-2. **性能工程**：掌握系统性的性能优化方法
-3. **可扩展性设计**：学习如何设计可扩展的语言实现
-4. **工程实践**：了解大型软件项目的组织和管理
+#### <span style="color: #C73E1D">系统架构师路径</span>
+1. **<span style="color: #C73E1D">整体架构设计</span>**：理解模块化和分层设计原则
+2. **<span style="color: #C73E1D">性能工程</span>**：掌握系统性的性能优化方法
+3. **<span style="color: #C73E1D">可扩展性设计</span>**：学习如何设计可扩展的语言实现
+4. **<span style="color: #C73E1D">工程实践</span>**：了解大型软件项目的组织和管理
 
-### 实际应用价值
+### <span style="color: #2E86AB">实际应用价值</span>
 
-#### 编程语言设计
-- **架构设计原则**：学习如何设计简洁而强大的语言架构
-- **性能优化策略**：掌握虚拟机和编译器的优化技术
-- **可扩展性设计**：理解如何设计可扩展的语言实现
+#### <span style="color: #C73E1D">编程语言设计</span>
+- **<span style="color: #C73E1D">架构设计原则</span>**：学习如何设计简洁而强大的语言架构
+- **<span style="color: #C73E1D">性能优化策略</span>**：掌握虚拟机和编译器的优化技术
+- **<span style="color: #C73E1D">可扩展性设计</span>**：理解如何设计可扩展的语言实现
 
-#### 系统编程
-- **C语言最佳实践**：学习高质量C代码的编写技巧
-- **内存管理技术**：掌握高效的内存管理策略
-- **性能优化方法**：理解系统级性能优化的方法论
+#### <span style="color: #C73E1D">系统编程</span>
+- **<span style="color: #C73E1D">C语言最佳实践</span>**：学习高质量<span style="color: #F18F01">C代码</span>的编写技巧
+- **<span style="color: #C73E1D">内存管理技术</span>**：掌握高效的内存管理策略
+- **<span style="color: #C73E1D">性能优化方法</span>**：理解系统级性能优化的方法论
 
-#### 软件架构
-- **模块化设计**：学习如何设计清晰的模块边界
-- **接口设计**：掌握API设计的原则和技巧
-- **错误处理**：理解健壮的错误处理机制
+#### <span style="color: #C73E1D">软件架构</span>
+- **<span style="color: #C73E1D">模块化设计</span>**：学习如何设计清晰的模块边界
+- **<span style="color: #C73E1D">接口设计</span>**：掌握<span style="color: #F18F01">API</span>设计的原则和技巧
+- **<span style="color: #C73E1D">错误处理</span>**：理解健壮的错误处理机制
 
-## 总结
+## <span style="color: #A23B72">总结</span>
 
-Lua 5.1的内部实现是现代编程语言设计的典型范例，它成功地将复杂的计算机科学概念转化为简洁而高效的代码实现。通过深入理解Lua的架构设计，我们可以学到：
+<span style="color: #F18F01">Lua 5.1</span>的内部实现是现代编程语言设计的典型范例，它成功地将复杂的计算机科学概念转化为简洁而高效的代码实现。通过深入理解<span style="color: #F18F01">Lua</span>的架构设计，我们可以学到：
 
-### 设计哲学
-- **简洁性**：最小化核心功能，避免不必要的复杂性
-- **高效性**：在内存使用和执行速度之间找到最佳平衡
-- **可扩展性**：提供灵活的扩展机制，支持多样化的应用需求
+### <span style="color: #2E86AB">设计哲学</span>
+- **<span style="color: #C73E1D">简洁性</span>**：最小化核心功能，避免不必要的复杂性
+- **<span style="color: #C73E1D">高效性</span>**：在内存使用和执行速度之间找到最佳平衡
+- **<span style="color: #C73E1D">可扩展性</span>**：提供灵活的扩展机制，支持多样化的应用需求
 
-### 技术创新
-- **基于寄存器的虚拟机**：相比传统栈架构，显著提升执行效率
-- **增量垃圾回收**：在内存管理和程序响应性之间取得平衡
-- **统一的数据表示**：通过Tagged Values实现高效的动态类型系统
+### <span style="color: #2E86AB">技术创新</span>
+- **<span style="color: #C73E1D">基于寄存器的虚拟机</span>**：相比传统栈架构，显著提升执行效率
+- **<span style="color: #C73E1D">增量垃圾回收</span>**：在内存管理和程序响应性之间取得平衡
+- **<span style="color: #C73E1D">统一的数据表示</span>**：通过<span style="color: #F18F01">Tagged Values</span>实现高效的动态类型系统
 
-### 工程实践
-- **模块化架构**：清晰的模块划分和接口设计
-- **错误处理**：完善的错误恢复和异常处理机制
-- **性能优化**：系统性的性能优化策略和实现技巧
+### <span style="color: #2E86AB">工程实践</span>
+- **<span style="color: #C73E1D">模块化架构</span>**：清晰的模块划分和接口设计
+- **<span style="color: #C73E1D">错误处理</span>**：完善的错误恢复和异常处理机制
+- **<span style="color: #C73E1D">性能优化</span>**：系统性的性能优化策略和实现技巧
 
-### 学习价值
-- **编程语言理论**：深入理解编译器和虚拟机的设计原理
-- **系统编程技能**：掌握高效C语言编程和系统设计技巧
-- **软件架构能力**：学习如何设计简洁而强大的软件架构
+### <span style="color: #2E86AB">学习价值</span>
+- **<span style="color: #C73E1D">编程语言理论</span>**：深入理解编译器和虚拟机的设计原理
+- **<span style="color: #C73E1D">系统编程技能</span>**：掌握高效<span style="color: #F18F01">C语言</span>编程和系统设计技巧
+- **<span style="color: #C73E1D">软件架构能力</span>**：学习如何设计简洁而强大的软件架构
 
-Lua的成功不仅在于其技术实现的优秀，更在于其设计理念的先进性。它证明了简洁性和高效性并不矛盾，通过精心的设计和实现，可以创造出既强大又优雅的软件系统。
+<span style="color: #F18F01">Lua</span>的成功不仅在于其技术实现的优秀，更在于其设计理念的先进性。它证明了<span style="color: #C73E1D">简洁性</span>和<span style="color: #C73E1D">高效性</span>并不矛盾，通过精心的设计和实现，可以创造出既强大又优雅的软件系统。
 
-对于学习者而言，Lua源码是一个宝贵的学习资源，它展示了如何将理论知识转化为实际的工程实现。通过深入研究Lua的内部机制，我们不仅可以更好地使用Lua语言，更可以从中学到宝贵的软件设计和实现经验，这些经验对于任何软件开发工作都具有重要的指导意义。
+对于学习者而言，<span style="color: #F18F01">Lua源码</span>是一个宝贵的学习资源，它展示了如何将理论知识转化为实际的工程实现。通过深入研究<span style="color: #F18F01">Lua</span>的内部机制，我们不仅可以更好地使用<span style="color: #F18F01">Lua语言</span>，更可以从中学到宝贵的软件设计和实现经验，这些经验对于任何软件开发工作都具有重要的指导意义。
 
 ---
 
-*注：本文档基于 Lua 5.1.1 源代码分析，版权归 Lua.org, PUC-Rio 所有*
+*注：本文档基于 <span style="color: #F18F01">Lua 5.1.1</span> 源代码分析，版权归 <span style="color: #F18F01">Lua.org, PUC-Rio</span> 所有*
