@@ -3,7 +3,10 @@
 ## <span style="color: #A23B72; font-weight: bold;">问题</span>
 <span style="color: #F18F01; font-weight: bold;">请详细解释Lua虚拟机的架构设计，包括其核心组件、执行模型和关键数据结构。</span>
 
-> **<span style="color: #C73E1D; font-weight: bold;">重要更正</span>**：经过对Lua源代码的深入分析，确认**Lua虚拟机是基于寄存器的虚拟机**，而非基于栈的虚拟机。本文档已根据源代码证据进行了全面修正。
+> **<span style="color: #C73E1D; font-weight: bold;">重要更正</span>**：经过对Lua 5.1.5源代码的深入分析，确认：
+> 1. **Lua虚拟机是基于寄存器的虚拟机**，而非基于栈的虚拟机
+> 2. **指令分发使用标准switch语句**，而非vmdispatch宏或computed goto
+> 3. 本文档已根据实际源代码进行了全面修正，所有代码示例均来自真实的Lua 5.1.5实现
 
 ## <span style="color: #2E86AB; font-weight: bold;">通俗概述</span>
 
@@ -213,89 +216,93 @@ void luaV_execute (lua_State *L) {
     lua_assert(base <= L->top && L->top < L->stack + L->stacksize);
 
     /* 4. 指令分发：根据操作码跳转到对应处理代码 */
-    vmdispatch (GET_OPCODE(i)) {
+    switch (GET_OPCODE(i)) {
 
       /* === 数据移动指令 === */
-      vmcase(OP_MOVE) {
+      case OP_MOVE: {
         /* MOVE A B: R(A) := R(B) */
         /* 将寄存器B的值复制到寄存器A */
         setobjs2s(L, ra, RB(i));
-        vmbreak;
+        continue;
       }
 
       /* === 常量加载指令 === */
-      vmcase(OP_LOADK) {
+      case OP_LOADK: {
         /* LOADK A Bx: R(A) := Kst(Bx) */
         /* 将常量Bx加载到寄存器A */
-        TValue *rb = k + GETARG_Bx(i);  /* 获取常量地址 */
-        setobj2s(L, ra, rb);            /* 复制常量到寄存器 */
-        vmbreak;
+        setobj2s(L, ra, KBx(i));        /* 复制常量到寄存器 */
+        continue;
       }
 
       /* === 布尔值加载指令 === */
-      vmcase(OP_LOADBOOL) {
+      case OP_LOADBOOL: {
         /* LOADBOOL A B C: R(A) := (Bool)B; if (C) pc++ */
         setbvalue(ra, GETARG_B(i));     /* 设置布尔值 */
-        if (GETARG_C(i)) ci->u.l.savedpc++; /* 条件跳过下一条指令 */
-        vmbreak;
+        if (GETARG_C(i)) pc++;          /* 条件跳过下一条指令 */
+        continue;
       }
 
       /* === 算术运算指令 === */
-      vmcase(OP_ADD) {
+      case OP_ADD: {
         /* ADD A B C: R(A) := RK(B) + RK(C) */
-        TValue *rb = RKB(i);            /* 获取操作数B */
-        TValue *rc = RKC(i);            /* 获取操作数C */
-        lua_Number nb, nc;
-        if (ttisinteger(rb) && ttisinteger(rc)) {
-          /* 整数加法优化路径 */
-          lua_Integer ib = ivalue(rb), ic = ivalue(rc);
-          setivalue(ra, intop(+, ib, ic));
-        }
-        else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-          /* 浮点数加法 */
-          setfltvalue(ra, luai_numadd(L, nb, nc));
-        }
-        else {
-          /* 调用元方法 */
-          luaT_trybinTM(L, rb, rc, ra, TM_ADD);
-        }
-        vmbreak;
+        /* 使用arith_op宏处理算术运算 */
+        arith_op(luai_numadd, TM_ADD);
+        continue;
       }
 
+      /* arith_op宏的实际定义（lvm.c第364行）：
+      #define arith_op(op,tm) { \
+              TValue *rb = RKB(i); \
+              TValue *rc = RKC(i); \
+              if (ttisnumber(rb) && ttisnumber(rc)) { \
+                lua_Number nb = nvalue(rb), nc = nvalue(rc); \
+                setnvalue(ra, op(nb, nc)); \
+              } \
+              else \
+                Protect(Arith(L, ra, rb, rc, tm)); \
+            }
+      */
+
       /* === 函数调用指令 === */
-      vmcase(OP_CALL) {
+      case OP_CALL: {
         /* CALL A B C: R(A), ... ,R(A+C-2) := R(A)(R(A+1), ... ,R(A+B-1)) */
         int b = GETARG_B(i);            /* 参数数量 */
         int nresults = GETARG_C(i) - 1; /* 期望返回值数量 */
         if (b != 0) L->top = ra+b;      /* 设置栈顶 */
-        if (luaD_precall(L, ra, nresults)) {
-          /* C函数调用已完成 */
-          if (nresults >= 0)
-            L->top = ci->top;           /* 调整栈顶 */
+        L->savedpc = pc;                /* 保存程序计数器 */
+        switch (luaD_precall(L, ra, nresults)) {
+          case PCRLUA: {
+            nexeccalls++;
+            goto reentry;               /* 重新进入Lua函数执行 */
+          }
+          case PCRC: {
+            /* C函数调用已完成，调整结果 */
+            if (nresults >= 0) L->top = L->ci->top;
+            base = L->base;
+            continue;
+          }
+          default: {
+            return;                     /* yield */
+          }
         }
-        else {
-          /* Lua函数调用：需要执行新函数 */
-          ci = L->ci;                   /* 更新调用信息 */
-          goto newframe;                /* 跳转到新函数执行 */
-        }
-        vmbreak;
       }
 
       /* === 返回指令 === */
-      vmcase(OP_RETURN) {
+      case OP_RETURN: {
         /* RETURN A B: return R(A), ... ,R(A+B-2) */
         int b = GETARG_B(i);
-        if (cl->p->sizep > 0) luaF_close(L, base); /* 关闭upvalue */
-        b = luaD_poscall(L, ci, ra, (b != 0 ? b - 1 : cast_int(L->top - ra)));
-        if (ci->callstatus & CIST_FRESH)
-          return;  /* 外部调用：直接返回 */
+        if (b != 0) L->top = ra+b-1;
+        if (L->openupval) luaF_close(L, base); /* 关闭upvalue */
+        L->savedpc = pc;                /* 保存程序计数器 */
+        b = luaD_poscall(L, ra);        /* 处理返回 */
+        if (--nexeccalls == 0)          /* 是否为最外层调用？ */
+          return;                       /* 是：直接返回 */
         else {
-          /* 内部调用：继续执行调用者 */
-          ci = L->ci;
-          if (b) L->top = ci->top;
-          lua_assert(isLua(ci));
-          lua_assert(GET_OPCODE(*((ci)->u.l.savedpc - 1)) == OP_CALL);
-          goto newframe;
+          /* 否：继续执行调用者 */
+          if (b) L->top = L->ci->top;
+          lua_assert(isLua(L->ci));
+          lua_assert(GET_OPCODE(*((L->ci)->savedpc - 1)) == OP_CALL);
+          goto reentry;                 /* 重新进入执行循环 */
         }
       }
 
@@ -408,41 +415,52 @@ vmcase(OP_CALL) {
 
 ### <span style="color: #A23B72; font-weight: bold;">虚拟机优化技术</span>
 
-#### <span style="color: #4A90A4; font-weight: bold;">1. Computed Goto优化</span>
+#### <span style="color: #4A90A4; font-weight: bold;">1. Switch语句优化</span>
 
-**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：传统的<span style="color: #F18F01;">switch语句</span>像"查字典"，每次都要从头找；<span style="color: #2E86AB; font-weight: bold;">computed goto</span>像"书签"，直接跳到目标位置。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：Lua 5.1.5使用标准的<span style="color: #F18F01;">switch语句</span>进行指令分发，现代编译器会自动优化为跳转表。
 
 ```c
-// lvm.c - Computed Goto优化
-#if defined(__GNUC__) && !defined(__STRICT_ANSI__)
-/* GCC编译器支持computed goto优化 */
-#undef vmdispatch
-#undef vmcase
-#undef vmbreak
+// lvm.c - 实际的指令分发实现
+void luaV_execute (lua_State *L, int nexeccalls) {
+  LClosure *cl;
+  StkId base;
+  TValue *k;
+  const Instruction *pc;
+ reentry:  /* 重新进入点 */
+  lua_assert(isLua(L->ci));
+  pc = L->savedpc;
+  cl = &clvalue(L->ci->func)->l;
+  base = L->base;
+  k = cl->p->k;
 
-#define vmdispatch(o)   goto *disptab[o];
-#define vmcase(l)       l##_:
-#define vmbreak         goto *disptab[GET_OPCODE(*ci->u.l.savedpc++)];
+  /* 主解释器循环 */
+  for (;;) {
+    const Instruction i = *pc++;
+    StkId ra;
 
-void luaV_execute (lua_State *L) {
-  /* 指令跳转表：每个指令对应一个标签地址 */
-  static const void *const disptab[NUM_OPCODES] = {
-    &&OP_MOVE_, &&OP_LOADK_, &&OP_LOADKX_, &&OP_LOADBOOL_,
-    &&OP_LOADNIL_, &&OP_GETUPVAL_, &&OP_GETTABUP_, &&OP_GETTABLE_,
-    /* ... 更多指令标签 */
-  };
+    /* 调试钩子检查 */
+    if ((L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) &&
+        (--L->hookcount == 0 || L->hookmask & LUA_MASKLINE)) {
+      traceexec(L, pc);
+      if (L->status == LUA_YIELD) {
+        L->savedpc = pc - 1;
+        return;
+      }
+      base = L->base;
+    }
 
-  /* 直接跳转到第一条指令，避免switch开销 */
-  goto *disptab[GET_OPCODE(*ci->u.l.savedpc++)];
+    ra = RA(i);
 
-  OP_MOVE_:
-    /* 处理MOVE指令 */
-    setobjs2s(L, ra, RB(i));
-    goto *disptab[GET_OPCODE(*ci->u.l.savedpc++)]; /* 直接跳转到下一条指令 */
-
-  /* ... 其他指令处理 */
+    /* 指令分发：使用switch语句 */
+    switch (GET_OPCODE(i)) {
+      case OP_MOVE: {
+        setobjs2s(L, ra, RB(i));
+        continue;
+      }
+      /* ... 其他指令处理 */
+    }
+  }
 }
-#endif
 ```
 
 #### <span style="color: #4A90A4; font-weight: bold;">2. 指令融合优化</span>
@@ -944,8 +962,8 @@ void luaV_execute (lua_State *L) {
     }
 
     /* 执行指令 */
-    vmdispatch (GET_OPCODE(i)) {
-      /* ... */
+    switch (GET_OPCODE(i)) {
+      /* ... 各种指令的case处理 */
     }
   }
 }
@@ -998,63 +1016,55 @@ l_noret luaD_throw (lua_State *L, int errcode) {
 
 ### <span style="color: #A23B72; font-weight: bold;">7. 虚拟机的性能优化还有哪些技术？</span>
 
-**<span style="color: #4A90A4; font-weight: bold;">1. 快速路径优化</span>**：
+**<span style="color: #4A90A4; font-weight: bold;">1. 表访问实现</span>**：
 ```c
-// lvm.c - 表访问快速路径
-vmcase(OP_GETTABLE) {
-  StkId rb = RB(i);
+// lvm.c - 实际的表访问实现
+case OP_GETTABLE: {
+  /* GETTABLE A B C: R(A) := R(B)[RK(C)] */
+  Protect(luaV_gettable(L, RB(i), RKC(i), ra));
+  continue;
+}
+
+/* 注意：Lua 5.1.5将复杂的表访问逻辑封装在luaV_gettable函数中，
+   该函数内部处理了快速路径优化、元方法调用等复杂逻辑 */
+```
+
+**<span style="color: #4A90A4; font-weight: bold;">2. 算术运算优化</span>**：
+```c
+// lvm.c - 实际的算术运算实现
+case OP_ADD: {
+  arith_op(luai_numadd, TM_ADD);
+  continue;
+}
+
+/* arith_op宏展开后的实际逻辑：
+{
+  TValue *rb = RKB(i);
   TValue *rc = RKC(i);
-
-  /* 快速路径：直接表访问 */
-  if (ttistable(rb) && ttisstring(rc)) {
-    Table *h = hvalue(rb);
-    TString *key = tsvalue(rc);
-    const TValue *res = luaH_getshortstr(h, key);
-    if (!ttisnil(res)) {
-      setobj2s(L, ra, res);
-      vmbreak;
-    }
+  if (ttisnumber(rb) && ttisnumber(rc)) {
+    lua_Number nb = nvalue(rb), nc = nvalue(rc);
+    setnvalue(ra, luai_numadd(nb, nc));  // 数值快速路径
   }
-
-  /* 慢速路径：处理元方法等 */
-  luaV_gettable(L, rb, rc, ra);
-  vmbreak;
+  else
+    Protect(Arith(L, ra, rb, rc, TM_ADD)); // 元方法慢速路径
 }
+*/
 ```
 
-**<span style="color: #4A90A4; font-weight: bold;">2. 内联展开</span>**：
+**<span style="color: #4A90A4; font-weight: bold;">3. 条件跳转实现</span>**：
 ```c
-// lvm.c - 算术运算内联
-vmcase(OP_ADD) {
-  TValue *rb = RKB(i), *rc = RKC(i);
-  lua_Number nb, nc;
-
-  /* 整数快速路径 */
-  if (ttisinteger(rb) && ttisinteger(rc)) {
-    lua_Integer ib = ivalue(rb), ic = ivalue(rc);
-    setivalue(ra, intop(+, ib, ic));
-  }
-  /* 浮点数快速路径 */
-  else if (tonumber(rb, &nb) && tonumber(rc, &nc)) {
-    setfltvalue(ra, luai_numadd(L, nb, nc));
-  }
-  /* 元方法慢速路径 */
-  else {
-    luaT_trybinTM(L, rb, rc, ra, TM_ADD);
-  }
-  vmbreak;
-}
-```
-
-**<span style="color: #4A90A4; font-weight: bold;">3. 分支预测优化</span>**：
-```c
-// lvm.c - 条件跳转优化
-vmcase(OP_TEST) {
+// lvm.c - 实际的条件跳转实现
+case OP_TEST: {
   /* TEST A C: if not (R(A) <=> C) then pc++ */
-  if (GETARG_C(i) ? l_isfalse(ra) : !l_isfalse(ra))
-    ci->u.l.savedpc++;  /* 跳过下一条指令 */
-  vmbreak;
+  if (l_isfalse(ra) != GETARG_C(i))
+    dojump(L, pc, GETARG_sBx(*pc));  /* 执行跳转 */
+  pc++;  /* 跳过跳转偏移量 */
+  continue;
 }
+
+/* dojump宏定义（lvm.c第358行）：
+#define dojump(L,pc,i) {(pc) += (i); luai_threadyield(L);}
+*/
 ```
 
 ## <span style="color: #C73E1D; font-weight: bold; font-size: 1.2em;">实践应用指南</span>
