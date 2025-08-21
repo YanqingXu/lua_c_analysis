@@ -1,13 +1,13 @@
-# Lua垃圾回收机制深度解析
+# <span style="color:#1565C0">Lua垃圾回收机制深度解析</span>
 
-## 问题
+## <span style="color:#2E7D32">问题</span>
 详细解释Lua的垃圾回收算法，包括三色标记法的实现、增量回收机制以及相关的性能优化策略。
 
-## 通俗概述
+## <span style="color:#2E7D32">通俗概述</span>
 
 想象你的房间里堆满了各种物品，有些还在使用，有些已经不需要了。垃圾回收就像一个智能的"清洁工"，它的任务是找出那些不再需要的物品并清理掉，但不能误扔还在使用的东西。
 
-**多角度理解垃圾回收**：
+<span style="color:#00897B"><strong>多角度理解垃圾回收</strong></span>：
 
 1. **图书馆管理员视角**：
    - 图书馆有很多书籍（对象），有些被读者借阅（被引用），有些闲置
@@ -24,37 +24,37 @@
    - 灰色嫌疑人：正在调查中，需要查看其关联人员
    - 黑色嫌疑人：已确认无罪，不再怀疑
 
-**Lua的垃圾回收策略**：
-- **三色标记法**：就像用三种颜色的贴纸来标记物品状态
+<span style="color:#00897B"><strong>Lua的垃圾回收策略</strong></span>：
+- <span style="color:#6A1B9A"><strong>三色标记法</strong></span>：就像用三种颜色的贴纸来标记物品状态
   - 白色：可能是垃圾，待检查
   - 灰色：正在检查中，需要查看它引用的其他物品
   - 黑色：确认还在使用，不能扔掉
 
-- **增量回收**：不是一次性清理整个房间（会很累），而是每次只清理一小部分，分多次完成
+- <span style="color:#6A1B9A"><strong>增量回收</strong></span>：不是一次性清理整个房间（会很累），而是每次只清理一小部分，分多次完成
 
-- **写屏障机制**：就像在物品上安装"移动感应器"，当黑色物品指向白色物品时立即报警
+- <span style="color:#EF6C00"><strong>写屏障机制</strong></span>：就像在物品上安装"移动感应器"，当黑色物品指向白色物品时立即报警
 
-**核心设计理念**：
-- **正确性第一**：绝不能误删还在使用的对象
-- **性能平衡**：在回收效率和程序响应性间找平衡
-- **内存效率**：及时回收不用的内存，避免内存泄漏
+<span style="color:#00897B"><strong>核心设计理念</strong></span>：
+- <span style="color:#1565C0"><strong>正确性第一</strong></span>：绝不能误删还在使用的对象
+- <span style="color:#2E7D32"><strong>性能平衡</strong></span>：在回收效率和程序响应性间找平衡
+- <span style="color:#00897B"><strong>内存效率</strong></span>：及时回收不用的内存，避免内存泄漏
 
-**实际意义**：这种机制让Lua程序能够自动管理内存，你不需要手动释放不用的变量。理解垃圾回收原理，能帮你写出内存友好的代码，避免内存泄漏和性能问题。
+<span style="color:#00897B"><strong>实际意义</strong></span>：这种机制让Lua程序能够<span style="color:#6A1B9A">自动管理内存</span>，你不需要手动释放不用的变量。理解垃圾回收原理，能帮你写出内存友好的代码，避免内存泄漏和性能问题。
 
-## 详细答案
+## <span style="color:#2E7D32">详细答案</span>
 
-### 垃圾回收算法概述
+### <span style="color:#6A1B9A">垃圾回收算法概述</span>
 
-**技术概述**：Lua使用**三色增量标记清除**垃圾回收算法，这是一种既保证正确性又优化性能的现代GC算法。主要特点：
+<strong><span style="color:#1565C0">技术概述</span></strong>：Lua使用<span style="color:#6A1B9A"><strong>三色增量标记清除</strong></span>垃圾回收算法，这是一种既保证正确性又优化性能的现代GC算法。主要特点：
 - 三色标记法避免递归深度问题
 - 增量执行减少停顿时间
 - 分代假设优化年轻对象回收
 
-### 三色标记法详解
+### <span style="color:#6A1B9A">三色标记法详解</span>
 
-#### 颜色状态系统
+#### <span style="color:#EF6C00">颜色状态系统</span>
 
-**通俗理解**：三色标记法就像给每个对象贴上不同颜色的标签，通过标签颜色来跟踪对象的"生死状态"。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：三色标记法就像给每个对象贴上不同颜色的标签，通过标签颜色来跟踪对象的"生死状态"。
 
 ```c
 // lgc.h - 对象颜色定义（详细注释版）
@@ -85,9 +85,9 @@
 #define isdead(g,v)     isdeadm(otherwhite(g), (v)->marked)
 ```
 
-#### 三色不变式
+#### <span style="color:#EF6C00">三色不变式</span>
 
-**技术原理**：三色标记法必须维护一个重要的不变式：**黑色对象不能直接指向白色对象**。
+<span style="color:#1565C0"><strong>技术原理</strong></span>：三色标记法必须维护一个重要的不变式：<span style="color:#EF6C00"><strong>黑色对象不能直接指向白色对象</strong></span>。
 
 ```c
 // lgc.c - 三色不变式维护
@@ -132,9 +132,9 @@ static void reallymarkobject (global_State *g, GCObject *o) {
 #define markobject(g,t) { if (iswhite(t)) reallymarkobject(g, obj2gco(t)); }
 ```
 
-#### 双白色技术
+#### <span style="color:#EF6C00">双白色技术</span>
 
-**通俗理解**：为什么需要两种白色？就像交通灯系统，需要区分"这一轮的红灯"和"下一轮的红灯"。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：为什么需要两种白色？就像交通灯系统，需要区分"这一轮的红灯"和"下一轮的红灯"。
 
 ```c
 // lgc.c - 双白色机制
@@ -169,11 +169,11 @@ static void atomic (lua_State *L) {
 }
 ```
 
-### GC状态机详解
+### <span style="color:#6A1B9A">GC状态机详解</span>
 
-#### 状态转换图
+#### <span style="color:#EF6C00">状态转换图</span>
 
-**通俗理解**：GC状态机就像一个"清洁工作流程图"，规定了清理工作的先后顺序和具体步骤。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：GC状态机就像一个"清洁工作流程图"，规定了清理工作的先后顺序和具体步骤。
 
 ```
 GC状态转换流程：
@@ -215,7 +215,7 @@ GC状态转换流程：
                              └─────────────┘
 ```
 
-#### 状态机实现
+#### <span style="color:#EF6C00">状态机实现</span>
 
 ```c
 // lgc.c - GC状态定义（详细注释版）
@@ -294,9 +294,9 @@ static lu_mem singlestep (lua_State *L) {
 }
 ```
 
-#### 原子阶段详解
+#### <span style="color:#EF6C00">原子阶段详解</span>
 
-**通俗理解**：原子阶段就像"最后的安全检查"，必须一口气完成，不能被打断。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：原子阶段就像"最后的安全检查"，必须一口气完成，不能被打断。
 
 ```c
 // lgc.c - 原子阶段实现
@@ -345,11 +345,11 @@ static lu_mem atomic (lua_State *L) {
 }
 ```
 
-### 对象遍历与标记传播
+### <span style="color:#6A1B9A">对象遍历与标记传播</span>
 
-#### 标记传播机制
+#### <span style="color:#EF6C00">标记传播机制</span>
 
-**通俗理解**：标记传播就像"病毒传播"，从根对象开始，沿着引用链"感染"所有可达的对象。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：标记传播就像"病毒传播"，从根对象开始，沿着引用链"感染"所有可达的对象。
 
 ```c
 // lgc.c - 标记传播核心函数（详细注释版）
@@ -400,9 +400,9 @@ static lu_mem propagatemark (global_State *g) {
 }
 ```
 
-#### 表对象遍历
+#### <span style="color:#EF6C00">表对象遍历</span>
 
-**通俗理解**：遍历表就像检查一个"关系网络图"，需要查看表中的每个键值对以及元表。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：遍历表就像检查一个"关系网络图"，需要查看表中的每个键值对以及元表。
 
 ```c
 // lgc.c - 表遍历实现
@@ -458,7 +458,7 @@ static void traversestrongtable (global_State *g, Table *h) {
 }
 ```
 
-#### 闭包对象遍历
+#### <span style="color:#EF6C00">闭包对象遍历</span>
 
 ```c
 // lgc.c - 闭包遍历实现
@@ -486,9 +486,9 @@ static lu_mem traverseCclosure (global_State *g, CClosure *cl) {
 }
 ```
 
-#### 线程对象遍历
+#### <span style="color:#EF6C00">线程对象遍历</span>
 
-**通俗理解**：遍历线程就像检查一个"工作现场"，需要查看栈上的所有数据和调用信息。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：遍历线程就像检查一个"工作现场"，需要查看栈上的所有数据和调用信息。
 
 ```c
 // lgc.c - 线程遍历实现
@@ -520,7 +520,7 @@ static lu_mem traversethread (global_State *g, lua_State *th) {
 }
 ```
 
-#### 函数原型遍历
+#### <span style="color:#EF6C00">函数原型遍历</span>
 
 ```c
 // lgc.c - 函数原型遍历
@@ -555,7 +555,7 @@ static lu_mem traverseproto (global_State *g, Proto *f) {
 }
 ```
 
-### 增量回收控制
+### <span style="color:#6A1B9A">增量回收控制</span>
 
 ```c
 // lgc.c - 增量GC步进控制
@@ -580,15 +580,15 @@ void luaC_step (lua_State *L) {
 }
 ```
 
-### 写屏障机制详解
+### <span style="color:#6A1B9A">写屏障机制详解</span>
 
-#### 写屏障的必要性
+#### <span style="color:#EF6C00">写屏障的必要性</span>
 
-**通俗理解**：写屏障就像"安全警报系统"。想象你在整理房间时，突然把一个已经检查过的黑盒子（黑色对象）里放入了一个白色物品（白色对象）。这时警报器会响起，提醒你需要重新检查这个白色物品。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：写屏障就像"安全警报系统"。想象你在整理房间时，突然把一个已经检查过的黑盒子（黑色对象）里放入了一个白色物品（白色对象）。这时警报器会响起，提醒你需要重新检查这个白色物品。
 
-**技术原理**：在增量GC过程中，程序可能会修改对象间的引用关系。如果一个黑色对象（已完成标记）指向了一个白色对象（未标记），就违反了三色不变式，可能导致白色对象被误回收。
+<span style="color:#1565C0"><strong>技术原理</strong></span>：在增量GC过程中，程序可能会修改对象间的引用关系。如果一个黑色对象（已完成标记）指向了一个白色对象（未标记），就违反了<span style="color:#EF6C00"><strong>三色不变式</strong></span>，可能导致白色对象被误回收。
 
-#### 写屏障实现
+#### <span style="color:#EF6C00">写屏障实现</span>
 
 ```c
 // lgc.h - 写屏障宏定义（详细注释版）
@@ -637,7 +637,7 @@ void luaC_barrierback_ (lua_State *L, Table *t) {
 }
 ```
 
-#### 写屏障的应用场景
+#### <span style="color:#EF6C00">写屏障的应用场景</span>
 
 ```c
 // lvm.c - 虚拟机中的写屏障应用
@@ -678,9 +678,9 @@ LUA_API void lua_setfield (lua_State *L, int idx, const char *k) {
 }
 ```
 
-#### 写屏障的性能考虑
+#### <span style="color:#EF6C00">写屏障的性能考虑</span>
 
-**通俗理解**：写屏障就像"安全检查"，虽然保证了正确性，但会带来一定的性能开销。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：写屏障就像"安全检查"，虽然保证了正确性，但会带来一定的性能开销。
 
 ```c
 // lgc.c - 写屏障优化
@@ -714,9 +714,9 @@ static void remarkupvals (global_State *g) {
 }
 ```
 
-#### 弱引用与写屏障
+#### <span style="color:#EF6C00">弱引用与写屏障</span>
 
-**通俗理解**：弱引用就像"临时便签"，不会阻止对象被回收。写屏障对弱引用需要特殊处理。
+<span style="color:#00897B"><strong>通俗理解</strong></span>：弱引用就像"临时便签"，不会阻止对象被回收。写屏障对弱引用需要特殊处理。
 
 ```c
 // lgc.c - 弱引用表的特殊处理
@@ -760,21 +760,20 @@ static void clearvalues (global_State *g, GCObject *l, GCObject *f) {
 }
 ```
 
-## 面试官关注要点
+## <span style="color:#2E7D32">面试官关注要点</span>
 
-1. **算法理解**：三色不变式、增量执行原理
-2. **性能影响**：GC停顿时间、内存使用效率
-3. **实现细节**：写屏障、弱引用处理
-4. **调优参数**：gcstepmul、gcpause的作用
+1. <span style="color:#1565C0"><strong>算法理解</strong></span>：<span style="color:#EF6C00">三色不变式</span>、<span style="color:#6A1B9A">增量执行</span>原理
+2. <span style="color:#2E7D32"><strong>性能影响</strong></span>：GC停顿时间、内存使用效率
+3. <span style="color:#6A1B9A"><strong>实现细节</strong></span>：<span style="color:#EF6C00">写屏障</span>、<span style="color:#EF6C00">弱引用</span>处理
+4. <span style="color:#00897B"><strong>调优参数</strong></span>：gcstepmul、gcpause的作用
 
-## 常见后续问题详解
+## <span style="color:#2E7D32">常见后续问题详解</span>
 
-### 1. 什么是三色不变式？如何保证其正确性？
+### <span style="color:#6A1B9A">1. 什么是<span style="color:#EF6C00">三色不变式</span>？如何保证其正确性？</span>
 
-**技术原理**：
-三色不变式是三色标记算法的核心约束：**黑色对象不能直接指向白色对象**。
+<span style="color:#1565C0"><strong>技术原理</strong></span>：
+三色不变式是三色标记算法的核心约束：<span style="color:#EF6C00"><strong>黑色对象不能直接指向白色对象</strong></span>。
 
-**详细解释**：
 ```c
 /*
 三色不变式的数学表述：
@@ -798,9 +797,9 @@ void maintain_tricolor_invariant(GCObject *parent, GCObject *child) {
 }
 ```
 
-**保证正确性的机制**：
+<span style="color:#1565C0"><strong>保证正确性的机制</strong></span>：
 
-1. **写屏障**：在修改引用时检查和维护不变式
+1. <strong>写屏障</strong>：在修改引用时检查和维护不变式
 ```c
 // lgc.c - 写屏障保证不变式
 void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
@@ -817,7 +816,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 }
 ```
 
-2. **原子阶段**：确保最终标记的完整性
+2. <strong>原子阶段</strong>：确保最终标记的完整性
 ```c
 // lgc.c - 原子阶段保证完整性
 static lu_mem atomic (lua_State *L) {
@@ -836,7 +835,7 @@ static lu_mem atomic (lua_State *L) {
 }
 ```
 
-**实际例子**：
+<span style="color:#00897B"><strong>实际例子</strong></span>：
 ```lua
 -- 可能违反三色不变式的情况
 local t1 = {data = "important"}  -- t1被标记为黑色
@@ -849,12 +848,12 @@ t1.ref = t2  -- 黑色对象指向白色对象
 -- 要么标记t2为灰色，要么将t1降级为白色
 ```
 
-### 2. Lua的写屏障是如何工作的？为什么需要写屏障？
+### <span style="color:#6A1B9A">2. Lua的<span style="color:#EF6C00">写屏障</span>是如何工作的？为什么需要写屏障？</span>
 
-**技术原理**：
+<span style="color:#1565C0"><strong>技术原理</strong></span>：
 写屏障是在修改对象引用时执行的检查机制，用于维护GC算法的正确性。
 
-**为什么需要写屏障**：
+<span style="color:#1565C0"><strong>为什么需要写屏障</strong></span>：
 ```c
 /*
 问题场景：增量GC过程中的引用修改
@@ -878,7 +877,7 @@ void dangerous_assignment_without_barrier() {
 }
 ```
 
-**写屏障的工作机制**：
+<span style="color:#1565C0"><strong>写屏障的工作机制</strong></span>：
 ```c
 // lgc.h - 写屏障的完整实现
 #define luaC_barrier(L,p,v) ( \
@@ -913,7 +912,7 @@ void luaC_barrier_ (lua_State *L, GCObject *o, GCObject *v) {
 }
 ```
 
-**不同类型的写屏障**：
+<span style="color:#1565C0"><strong>不同类型的写屏障</strong></span>：
 ```c
 // lgc.h - 多种写屏障类型
 /*
@@ -942,7 +941,7 @@ void table_assignment_example() {
 }
 ```
 
-**性能影响和优化**：
+<span style="color:#2E7D32"><strong>性能影响和优化</strong></span>：
 ```c
 // 写屏障的性能考虑
 static inline void optimized_barrier_check() {
@@ -963,12 +962,12 @@ static inline void optimized_barrier_check() {
 }
 ```
 
-### 3. 增量GC如何平衡停顿时间和吞吐量？
+### <span style="color:#6A1B9A">3. <span style="color:#6A1B9A">增量GC</span>如何平衡停顿时间和吞吐量？</span>
 
-**技术原理**：
+<span style="color:#1565C0"><strong>技术原理</strong></span>：
 增量GC通过将垃圾回收工作分散到多个小步骤中，减少单次停顿时间，但可能增加总体开销。
 
-**平衡机制详解**：
+<span style="color:#1565C0"><strong>平衡机制详解</strong></span>：
 ```c
 // lgc.c - 增量GC的控制参数
 /*
@@ -1012,7 +1011,7 @@ void luaC_step (lua_State *L) {
 }
 ```
 
-**停顿时间控制**：
+<span style="color:#2E7D32"><strong>停顿时间控制</strong></span>：
 ```c
 // lgc.c - 停顿时间控制策略
 static lu_mem singlestep (lua_State *L) {
@@ -1042,7 +1041,38 @@ static lu_mem singlestep (lua_State *L) {
             return sweepstep(L, g, GCSswpfinobj, &g->finobj);
         }
 
-        /* ... 其他阶段 ... */
+        case GCSswpfinobj: {
+            /* === 清除有终结器的对象 === */
+            return sweepstep(L, g, GCSswptobefnz, &g->tobefnz);
+        }
+
+        case GCSswptobefnz: {
+            /* === 清除待终结对象 === */
+            return sweepstep(L, g, GCSswpend, NULL);
+        }
+
+        case GCSswpend: {
+            /* === 清除结束，检查是否需要调用终结器 === */
+            makewhite(g, g->mainthread);  /* 主线程标记为白色 */
+            checkSizes(L, g);             /* 检查并调整内部结构大小 */
+            g->gcstate = GCScallfin;
+            return 0;
+        }
+
+        case GCScallfin: {
+            /* === 调用终结器 === */
+            if (g->tobefnz && !g->gcemergency) {
+                GCTM(L, 1);  /* 调用一个终结器 */
+                return (GCFINALIZECOST);
+            }
+            else {
+                /* 所有终结器调用完毕，进入暂停状态 */
+                g->gcstate = GCSpause;
+                return 0;
+            }
+        }
+
+        default: lua_assert(0); return 0;
     }
 }
 
@@ -1069,7 +1099,7 @@ static lu_mem sweepstep (lua_State *L, global_State *g,
 }
 ```
 
-**吞吐量优化**：
+<span style="color:#2E7D32"><strong>吞吐量优化</strong></span>：
 ```c
 // lgc.c - 吞吐量优化策略
 /*
@@ -1105,7 +1135,7 @@ void luaC_changemode (lua_State *L, int mode) {
 }
 ```
 
-**实际性能调优**：
+<span style="color:#00897B"><strong>实际性能调优</strong></span>：
 ```lua
 -- Lua中的GC参数调优示例
 -- 减少停顿时间（增加GC频率）
@@ -1123,432 +1153,9 @@ local after = collectgarbage("count")
 print("内存变化:", after - before, "KB")
 ```
 
-### 4. Lua如何处理循环引用？
+### <span style="color:#6A1B9A">4. 特定场景的GC优化</span>
 
-**技术原理**：
-Lua使用可达性分析而不是引用计数，因此天然能够处理循环引用。
-
-**循环引用的处理机制**：
-```c
-/*
-循环引用示例：
-A → B → C → A
-
-传统引用计数的问题：
-- A的引用计数 = 1（来自C）
-- B的引用计数 = 1（来自A）
-- C的引用计数 = 1（来自B）
-- 即使没有外部引用，计数都不为0，无法回收
-
-Lua的解决方案：
-- 从根对象开始标记所有可达对象
-- 如果A、B、C都不能从根对象到达，则全部回收
-- 循环引用不影响可达性分析
-*/
-
-// lgc.c - 可达性分析处理循环引用
-static void markroot (global_State *g) {
-    /* 从根对象开始标记 */
-    markobject(g, g->mainthread);  /* 主线程 */
-    markvalue(g, &g->l_registry);  /* 注册表 */
-    markmt(g);                     /* 元表 */
-    markbeingfnz(g);              /* 待终结对象 */
-}
-
-/* 标记过程自动处理循环引用 */
-static void propagatemark (global_State *g) {
-    GCObject *o = g->gray;
-    gray2black(o);  /* 标记为黑色，避免重复访问 */
-
-    /* 遍历对象的所有引用 */
-    switch (o->tt) {
-        case LUA_TTABLE: {
-            Table *h = gco2t(o);
-            /* 即使表中有循环引用，也只会标记一次 */
-            traversetable(g, h);
-            break;
-        }
-        /* ... 其他对象类型 ... */
-    }
-}
-```
-
-**实际例子**：
-```lua
--- 创建循环引用
-local a = {}
-local b = {}
-local c = {}
-
-a.next = b
-b.next = c
-c.next = a  -- 形成循环：a → b → c → a
-
--- 移除外部引用
-a, b, c = nil, nil, nil
-
--- 此时整个循环都不可达，会被GC回收
-collectgarbage()  -- 强制GC，循环引用被正确回收
-```
-
-### 5. 终结器(finalizer)的执行时机和限制是什么？
-
-**技术原理**：
-终结器是对象被回收前执行的清理函数，通过`__gc`元方法实现。
-
-**终结器的执行机制**：
-```c
-// lgc.c - 终结器处理
-static void separatetobefnz (global_State *g, int all) {
-    GCObject *curr;
-    GCObject **p = &g->finobj;
-    GCObject *tobefnz = NULL;  /* 待终结对象链表 */
-    GCObject **ptobefrz = &tobefnz;
-
-    while ((curr = *p) != NULL) {
-        lua_assert(tofinalize(curr));
-        if (!(iswhite(curr) || all)) {  /* 对象仍然可达？ */
-            p = &curr->next;  /* 保持在finobj链表中 */
-        } else {
-            /* 对象不可达，需要终结 */
-            *p = curr->next;  /* 从finobj中移除 */
-            curr->next = NULL;
-            *ptobefrz = curr;  /* 加入tobefnz链表 */
-            ptobefrz = &curr->next;
-
-            /* 标记对象为可达（复活），以便终结器执行 */
-            if (!iswhite(curr))
-                reallymarkobject(g, curr);
-        }
-    }
-
-    g->tobefnz = tobefnz;  /* 更新待终结链表 */
-}
-
-/* 调用终结器 */
-static void GCTM (lua_State *L, int propagateerrors) {
-    global_State *g = G(L);
-    const TValue *tm;
-    TValue v;
-
-    setgcovalue(L, &v, udata2finalize(g));  /* 获取待终结对象 */
-    tm = luaT_gettmbyobj(L, &v, TM_GC);     /* 获取__gc元方法 */
-
-    if (tm != NULL && ttisfunction(tm)) {   /* 有终结器函数？ */
-        int status;
-        lu_byte oldah = L->allowhook;
-        int running = g->gcrunning;
-
-        L->allowhook = 0;      /* 停止调试钩子 */
-        g->gcrunning = 0;      /* 停止GC */
-
-        /* 调用终结器：finalizer(object) */
-        setobj2s(L, L->top, tm);
-        setobj2s(L, L->top+1, &v);
-        L->top += 2;
-
-        status = luaD_pcall(L, dothecall, NULL, savestack(L, L->top - 2), 0);
-
-        L->allowhook = oldah;  /* 恢复钩子 */
-        g->gcrunning = running; /* 恢复GC */
-
-        if (status != LUA_OK && propagateerrors) {
-            /* 终结器出错，传播错误 */
-            luaD_throw(L, status);
-        }
-    }
-}
-```
-
-**终结器的限制和注意事项**：
-```c
-/*
-终结器的限制：
-1. 执行顺序不确定
-2. 不能访问其他正在被终结的对象
-3. 可能导致对象复活
-4. 执行时间不可预测
-5. 错误处理复杂
-*/
-
-// 终结器的安全检查
-static int runafewfinalizers (lua_State *L) {
-    global_State *g = G(L);
-    unsigned int i;
-
-    lua_assert(!g->tobefnz || g->gcfinnum > 0);
-
-    /* 限制每次执行的终结器数量 */
-    for (i = 0; g->tobefnz && i < GCFINALIZENUM; i++)
-        GCTM(L, 0);  /* 调用一个终结器，不传播错误 */
-
-    if (g->tobefnz == NULL)  /* 所有终结器执行完毕？ */
-        g->gcfinnum = 0;     /* 重置计数器 */
-    else {
-        g->gcfinnum++;       /* 增加计数器 */
-        if (g->gcfinnum >= 2) /* 执行了太多次？ */
-            g->gcfinnum = 0;  /* 重置，避免无限循环 */
-    }
-
-    return g->gcfinnum;
-}
-```
-
-**终结器的最佳实践**：
-```lua
--- 正确的终结器使用
-local Resource = {}
-Resource.__index = Resource
-
-function Resource.new(filename)
-    local self = setmetatable({}, Resource)
-    self.file = io.open(filename, "r")
-    self.filename = filename
-
-    -- 设置终结器
-    return setmetatable(self, {
-        __index = Resource,
-        __gc = function(obj)
-            if obj.file then
-                obj.file:close()
-                obj.file = nil
-                print("资源已清理:", obj.filename)
-            end
-        end
-    })
-end
-
--- 错误的终结器使用（可能导致问题）
-local BadResource = {}
-function BadResource.new()
-    local self = setmetatable({}, {
-        __gc = function(obj)
-            -- 错误1：访问可能已被回收的全局变量
-            print("清理中...")  -- print可能已被回收
-
-            -- 错误2：执行耗时操作
-            for i = 1, 1000000 do end  -- 阻塞GC
-
-            -- 错误3：抛出错误
-            error("终结器错误")  -- 可能导致程序崩溃
-        end
-    })
-    return self
-end
-```
-
-### 6. 分代垃圾回收与增量垃圾回收的区别？
-
-**技术原理**：
-分代GC基于"分代假设"：大多数对象都是短命的，新对象比老对象更可能成为垃圾。
-
-**Lua 5.4的分代GC实现**：
-```c
-// lgc.c - 分代GC的实现
-/*
-分代GC的核心思想：
-1. 将对象分为年轻代和老年代
-2. 优先回收年轻代（minor GC）
-3. 定期回收老年代（major GC）
-4. 大多数GC只处理年轻代，减少工作量
-*/
-
-#define getage(o)	(o->marked & 0x03)  /* 获取对象年龄 */
-#define setage(o,a)	((o)->marked = cast_byte(((o)->marked & (~0x03)) | a))
-
-/* 年龄定义 */
-#define G_NEW		0  /* 新对象 */
-#define G_SURVIVAL	1  /* 存活一次GC的对象 */
-#define G_OLD		2  /* 老对象 */
-#define G_TOUCHED	3  /* 被修改的老对象 */
-
-/* 分代GC的执行 */
-static void youngcollection (lua_State *L, global_State *g) {
-    GCObject **psurvival = &g->survival;  /* 存活对象链表 */
-    GCObject *dummy = obj2gco(g->mainthread);
-
-    g->gcstate = GCSpropagate;
-    markold(g, g->survival, g->reallyold);  /* 标记老对象 */
-    markold(g, g->finobj, g->finobjrold);   /* 标记终结对象 */
-
-    /* 原子阶段 */
-    atomic2gen(L, g);
-
-    /* 清除年轻对象 */
-    sweep2old(L, &g->allgc, psurvival);
-    checkpointer(&g->survival, dummy);
-
-    /* 提升存活对象 */
-    finishgencycle(L, g);
-}
-
-/* 老年代回收（完整GC） */
-static void fullgen (lua_State *L, global_State *g) {
-    enterinc(g);  /* 进入增量模式 */
-    luaC_runtilstate(L, bitmask(GCSpause));  /* 运行完整GC */
-    entergen(g);  /* 返回分代模式 */
-}
-```
-
-**性能对比**：
-```c
-/*
-增量GC vs 分代GC：
-
-增量GC：
-+ 停顿时间可控且均匀
-+ 适合实时性要求高的应用
-- 总体开销较高（写屏障开销）
-- 不能利用分代假设
-
-分代GC：
-+ 总体吞吐量更高
-+ 利用分代假设，减少工作量
-+ 适合分配密集的应用
-- 停顿时间不均匀（major GC较长）
-- 实现复杂度更高
-*/
-
-// 模式切换
-void luaC_changemode (lua_State *L, int newmode) {
-    global_State *g = G(L);
-    if (newmode != g->gckind) {
-        if (newmode == KGC_GEN) {  /* 切换到分代模式 */
-            luaC_runtilstate(L, bitmask(GCSpause));  /* 完成当前GC */
-            entergen(g);
-        } else {  /* 切换到增量模式 */
-            enterinc(g);
-        }
-        g->gckind = newmode;
-    }
-}
-```
-
-## 实践应用指南
-
-### 1. GC性能调优
-
-**理解GC对实际编程的影响**：
-```lua
--- 低效代码：频繁创建临时对象
-function bad_string_concat(list)
-    local result = ""
-    for i = 1, #list do
-        result = result .. list[i]  -- 每次连接都创建新字符串
-    end
-    return result
-end
-
--- 高效代码：减少临时对象创建
-function good_string_concat(list)
-    return table.concat(list)  -- 一次性完成连接
-end
-
--- 内存友好的循环
-function memory_friendly_loop()
-    local temp = {}  -- 在循环外创建
-    for i = 1, 1000000 do
-        -- 重用table而不是创建新的
-        temp[1] = i
-        temp[2] = i * 2
-        process(temp)
-        -- 清理引用，帮助GC
-        temp[1] = nil
-        temp[2] = nil
-    end
-end
-```
-
-### 2. GC监控和调试
-
-**GC性能监控**：
-```lua
--- GC性能监控工具
-local GCMonitor = {}
-
-function GCMonitor.start()
-    GCMonitor.start_time = os.clock()
-    GCMonitor.start_memory = collectgarbage("count")
-    GCMonitor.gc_count = 0
-
-    -- 设置GC回调（如果支持）
-    if debug.setgchandler then
-        debug.setgchandler(function(event)
-            if event == "start" then
-                GCMonitor.gc_count = GCMonitor.gc_count + 1
-            end
-        end)
-    end
-end
-
-function GCMonitor.report()
-    local end_time = os.clock()
-    local end_memory = collectgarbage("count")
-
-    print("=== GC性能报告 ===")
-    print("运行时间:", end_time - GCMonitor.start_time, "秒")
-    print("内存变化:", end_memory - GCMonitor.start_memory, "KB")
-    print("GC次数:", GCMonitor.gc_count)
-    print("GC频率:", GCMonitor.gc_count / (end_time - GCMonitor.start_time), "次/秒")
-end
-
--- 使用示例
-GCMonitor.start()
--- ... 执行你的代码 ...
-GCMonitor.report()
-```
-
-### 3. 内存泄漏检测
-
-**检测和避免内存泄漏**：
-```lua
--- 内存泄漏检测工具
-local function find_memory_leaks()
-    -- 强制完整GC
-    collectgarbage("collect")
-    collectgarbage("collect")  -- 两次确保完全清理
-
-    local before = collectgarbage("count")
-
-    -- 执行可能泄漏的代码
-    suspicious_function()
-
-    -- 再次强制GC
-    collectgarbage("collect")
-    collectgarbage("collect")
-
-    local after = collectgarbage("count")
-    local leaked = after - before
-
-    if leaked > 100 then  -- 阈值：100KB
-        print("警告：可能存在内存泄漏，增长了", leaked, "KB")
-    end
-end
-
--- 常见内存泄漏模式
-local global_cache = {}  -- 全局缓存可能导致泄漏
-
-function avoid_memory_leaks()
-    -- 1. 及时清理全局引用
-    global_cache = {}  -- 定期清理
-
-    -- 2. 避免循环引用（虽然Lua能处理，但最好避免）
-    local a = {}
-    local b = {ref = a}
-    a.ref = b  -- 循环引用
-    -- 清理时断开循环
-    a.ref = nil
-    b.ref = nil
-
-    -- 3. 正确使用弱引用
-    local weak_cache = setmetatable({}, {__mode = "v"})  -- 弱值表
-    weak_cache[key] = value  -- value可以被GC回收
-end
-```
-
-### 4. 特定场景的GC优化
-
-**游戏开发中的GC优化**：
+<span style="color:#2E7D32"><strong>游戏开发中的GC优化</strong></span>：
 ```lua
 -- 游戏循环中的GC管理
 local GameGC = {}
@@ -1589,23 +1196,3 @@ function ServerGC.request_handler(request)
     return response
 end
 ```
-
-## 相关源文件
-
-### 核心文件
-- `lgc.c/lgc.h` - 垃圾回收核心实现和算法
-- `lmem.c/lmem.h` - 内存分配管理和统计
-- `lobject.h` - 对象标记位定义和GC相关宏
-
-### 支撑文件
-- `lstate.h` - 全局GC状态管理和配置
-- `ltm.c/ltm.h` - 终结器元方法支持
-- `lapi.c` - GC相关的C API实现
-- `lbaselib.c` - collectgarbage函数实现
-
-### 虚拟机集成
-- `lvm.c` - 虚拟机中的GC触发和写屏障
-- `ltable.c` - 表操作中的GC集成
-- `lstring.c` - 字符串管理中的GC支持
-
-理解这些文件的关系和作用，有助于深入掌握Lua垃圾回收的完整机制和优化策略。

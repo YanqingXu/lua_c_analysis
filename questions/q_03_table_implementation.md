@@ -1,55 +1,55 @@
-# Lua表(Table)实现机制详解
+# <span style="color: #2E86AB">Lua表(Table)实现机制详解</span>
 
-## 问题
-深入分析Lua表的内部实现，包括哈希表结构、数组部分优化、哈希冲突解决以及动态扩容机制。
+## <span style="color: #A23B72">问题</span>
+深入分析<span style="color: #F18F01">Lua表</span>的内部实现，包括<span style="color: #C73E1D">哈希表结构</span>、<span style="color: #C73E1D">数组部分优化</span>、<span style="color: #C73E1D">哈希冲突解决</span>以及<span style="color: #C73E1D">动态扩容机制</span>。
 
-## 通俗概述
+## <span style="color: #A23B72">通俗概述</span>
 
-Lua的表(Table)就像一个超级智能的"万能容器"，它既可以当数组用，也可以当字典用，甚至可以同时兼顾两种功能。
+<span style="color: #F18F01">Lua的表(Table)</span>就像一个超级智能的"<span style="color: #2E86AB">万能容器</span>"，它既可以当<span style="color: #C73E1D">数组</span>用，也可以当<span style="color: #C73E1D">字典</span>用，甚至可以同时兼顾两种功能。
 
-**多角度理解表的设计**：
+**<span style="color: #A23B72">多角度理解表的设计</span>**：
 
-1. **图书馆管理系统视角**：
-   - **数组部分**：像书架上按顺序排列的书籍（1号位、2号位...），查找很快
-   - **哈希部分**：像按主题分类的索引卡片系统，通过关键词快速找到位置
-   - **智能分配**：系统自动决定新书放在书架还是索引系统中
+1. **<span style="color: #2E86AB">图书馆管理系统视角</span>**：
+   - **<span style="color: #C73E1D">数组部分</span>**：像书架上按顺序排列的书籍（1号位、2号位...），查找很快
+   - **<span style="color: #C73E1D">哈希部分</span>**：像按主题分类的索引卡片系统，通过关键词快速找到位置
+   - **<span style="color: #F18F01">智能分配</span>**：系统自动决定新书放在书架还是索引系统中
 
-2. **超市货架管理视角**：
-   - **数组部分**：像按编号排列的货架（商品1、商品2...），顾客按编号快速找到
-   - **哈希部分**：像按商品名称分类的导购系统，通过名称快速定位
-   - **动态调整**：根据商品类型自动选择最佳存放方式
+2. **<span style="color: #2E86AB">超市货架管理视角</span>**：
+   - **<span style="color: #C73E1D">数组部分</span>**：像按编号排列的货架（商品1、商品2...），顾客按编号快速找到
+   - **<span style="color: #C73E1D">哈希部分</span>**：像按商品名称分类的导购系统，通过名称快速定位
+   - **<span style="color: #F18F01">动态调整</span>**：根据商品类型自动选择最佳存放方式
 
-3. **办公室文件管理视角**：
-   - **数组部分**：像按日期顺序排列的文件夹，时间顺序访问很快
-   - **哈希部分**：像按项目名称分类的文件柜，通过项目名快速查找
-   - **混合使用**：同一个文件系统既支持按时间也支持按名称查找
+3. **<span style="color: #2E86AB">办公室文件管理视角</span>**：
+   - **<span style="color: #C73E1D">数组部分</span>**：像按日期顺序排列的文件夹，时间顺序访问很快
+   - **<span style="color: #C73E1D">哈希部分</span>**：像按项目名称分类的文件柜，通过项目名快速查找
+   - **<span style="color: #F18F01">混合使用</span>**：同一个文件系统既支持按时间也支持按名称查找
 
-**核心设计理念**：
-- **性能优化**：数组访问O(1)，哈希访问平均O(1)
-- **内存效率**：根据使用模式动态调整内存分配
-- **灵活性**：支持任意类型作为键和值
-- **自适应**：根据数据特征自动选择最优存储方式
+**<span style="color: #A23B72">核心设计理念</span>**：
+- **<span style="color: #C73E1D">性能优化</span>**：数组访问<span style="color: #F18F01">O(1)</span>，哈希访问平均<span style="color: #F18F01">O(1)</span>
+- **<span style="color: #C73E1D">内存效率</span>**：根据使用模式动态调整内存分配
+- **<span style="color: #C73E1D">灵活性</span>**：支持任意类型作为键和值
+- **<span style="color: #C73E1D">自适应</span>**：根据数据特征自动选择最优存储方式
 
-**智能优化机制**：
-- 如果你主要存储连续的数字索引（如1,2,3...），Lua会优先使用数组部分，访问速度更快
-- 如果你使用字符串或其他类型作为键，就会使用哈希部分
+**<span style="color: #A23B72">智能优化机制</span>**：
+- 如果你主要存储连续的数字索引（如<span style="color: #F18F01">1,2,3...</span>），Lua会优先使用<span style="color: #C73E1D">数组部分</span>，访问速度更快
+- 如果你使用<span style="color: #2E86AB">字符串</span>或其他类型作为键，就会使用<span style="color: #C73E1D">哈希部分</span>
 - 系统会自动在两种方式间平衡，确保最佳性能
 - 动态扩容时会重新评估数组和哈希部分的最优大小
 
-**实际编程意义**：
-- **数组操作**：`t[1], t[2], t[3]` 使用数组部分，性能最佳
-- **字典操作**：`t["name"], t["age"]` 使用哈希部分，灵活高效
-- **混合使用**：`t[1] = "first"; t["key"] = "value"` 自动优化存储
+**<span style="color: #A23B72">实际编程意义</span>**：
+- **<span style="color: #C73E1D">数组操作</span>**：`t[1], t[2], t[3]` 使用数组部分，性能最佳
+- **<span style="color: #C73E1D">字典操作</span>**：`t["name"], t["age"]` 使用哈希部分，灵活高效
+- **<span style="color: #C73E1D">混合使用</span>**：`t[1] = "first"; t["key"] = "value"` 自动优化存储
 
-**实际意义**：这种设计让Lua的表既有数组的高效，又有字典的灵活性。理解其内部机制，能帮你选择最优的数据组织方式，写出更高效的Lua代码。
+**<span style="color: #A23B72">实际意义</span>**：这种设计让<span style="color: #F18F01">Lua的表</span>既有<span style="color: #C73E1D">数组的高效</span>，又有<span style="color: #C73E1D">字典的灵活性</span>。理解其内部机制，能帮你选择最优的数据组织方式，写出更高效的Lua代码。
 
-## 详细答案
+## <span style="color: #A23B72">详细答案</span>
 
-### 表结构设计详解
+### <span style="color: #2E86AB">表结构设计详解</span>
 
-#### 混合数据结构架构
+#### <span style="color: #C73E1D">混合数据结构架构</span>
 
-**技术概述**：Lua的表是一个混合数据结构，巧妙地结合了数组和哈希表的优势，这种设计在性能和灵活性间达到了完美平衡。
+**<span style="color: #A23B72">技术概述</span>**：<span style="color: #F18F01">Lua的表</span>是一个<span style="color: #C73E1D">混合数据结构</span>，巧妙地结合了<span style="color: #2E86AB">数组</span>和<span style="color: #2E86AB">哈希表</span>的优势，这种设计在<span style="color: #C73E1D">性能</span>和<span style="color: #C73E1D">灵活性</span>间达到了完美平衡。
 
 ```c
 // ltable.h - 表结构定义（详细注释版）
@@ -104,9 +104,9 @@ typedef union TKey {
 #define isdummy(t)      ((t)->lastfree == NULL)   /* 是否为虚拟表 */
 ```
 
-#### 内存布局分析
+#### <span style="color: #C73E1D">内存布局分析</span>
 
-**通俗理解**：表的内存布局就像一个"双层停车场"，一层是按顺序排列的车位（数组），另一层是按车牌号分类的停车区（哈希）。
+**<span style="color: #A23B72">通俗理解</span>**：表的内存布局就像一个"<span style="color: #2E86AB">双层停车场</span>"，一层是按顺序排列的车位（<span style="color: #C73E1D">数组</span>），另一层是按车牌号分类的停车区（<span style="color: #C73E1D">哈希</span>）。
 
 ```
 表的内存布局示意图：
@@ -143,7 +143,7 @@ typedef union TKey {
                            lastfree指向最后空闲节点
 ```
 
-#### 数组与哈希的协作机制
+#### <span style="color: #C73E1D">数组与哈希的协作机制</span>
 
 ```c
 // ltable.c - 数组和哈希部分的协作
@@ -203,11 +203,11 @@ static Node *mainposition (const Table *t, const TValue *key) {
 }
 ```
 
-### 数组部分访问详解
+### <span style="color: #2E86AB">数组部分访问详解</span>
 
-#### 高效的数组访问机制
+#### <span style="color: #C73E1D">高效的数组访问机制</span>
 
-**通俗理解**：数组访问就像在书架上按编号找书，如果书在编号范围内，直接去对应位置取书；如果超出范围，就去索引系统查找。
+**<span style="color: #A23B72">通俗理解</span>**：数组访问就像在书架上按编号找书，如果书在编号范围内，直接去对应位置取书；如果超出范围，就去索引系统查找。
 
 ```c
 // ltable.c - 数组索引访问（详细注释版）
@@ -342,11 +342,11 @@ static void shrinkarray (lua_State *L, Table *t) {
 }
 ```
 
-### 哈希函数实现详解
+### <span style="color: #2E86AB">哈希函数实现详解</span>
 
-#### 多类型哈希策略
+#### <span style="color: #C73E1D">多类型哈希策略</span>
 
-**通俗理解**：哈希函数就像"地址计算器"，根据不同类型的"邮件"（键）计算出对应的"邮箱地址"（哈希位置）。不同类型的邮件需要不同的地址计算方法。
+**<span style="color: #A23B72">通俗理解</span>**：哈希函数就像"<span style="color: #F18F01">地址计算器</span>"，根据不同类型的"邮件"（<span style="color: #C73E1D">键</span>）计算出对应的"邮箱地址"（<span style="color: #C73E1D">哈希位置</span>）。不同类型的邮件需要不同的地址计算方法。
 
 ```c
 // ltable.c - 不同类型的哈希函数（详细注释版）
@@ -418,9 +418,9 @@ static Node *hashfloat (const Table *t, lua_Number n) {
 }
 ```
 
-#### 哈希冲突解决机制
+#### <span style="color: #C73E1D">哈希冲突解决机制</span>
 
-**通俗理解**：哈希冲突就像两个人的邮件被分配到同一个邮箱。解决方法是在邮箱里放一个"转发清单"，记录下一个邮箱的位置。
+**<span style="color: #A23B72">通俗理解</span>**：<span style="color: #F18F01">哈希冲突</span>就像两个人的邮件被分配到同一个邮箱。解决方法是在邮箱里放一个"<span style="color: #2E86AB">转发清单</span>"，记录下一个邮箱的位置。
 
 ```c
 // ltable.c - 开放寻址法处理冲突
@@ -646,7 +646,7 @@ TValue *luaH_newkey (lua_State *L, Table *t, const TValue *key) {
 }
 ```
 
-### 动态扩容机制
+### <span style="color: #2E86AB">动态扩容机制</span>
 
 ```c
 // ltable.c - 表重新哈希
@@ -703,21 +703,21 @@ void luaH_resize (lua_State *L, Table *t, unsigned int asize,
 }
 ```
 
-## 面试官关注要点
+## <span style="color: #A23B72">面试官关注要点</span>
 
-1. **混合结构**：为什么同时使用数组和哈希表？
-2. **性能优化**：数组部分的访问效率、哈希函数选择
-3. **内存效率**：动态扩容策略、内存布局优化
-4. **冲突处理**：开放寻址vs链式哈希的权衡
+1. **<span style="color: #C73E1D">混合结构</span>**：为什么同时使用<span style="color: #F18F01">数组</span>和<span style="color: #F18F01">哈希表</span>？
+2. **<span style="color: #C73E1D">性能优化</span>**：数组部分的访问效率、哈希函数选择
+3. **<span style="color: #C73E1D">内存效率</span>**：动态扩容策略、内存布局优化
+4. **<span style="color: #C73E1D">冲突处理</span>**：<span style="color: #F18F01">开放寻址</span>vs<span style="color: #F18F01">链式哈希</span>的权衡
 
-## 常见后续问题详解
+## <span style="color: #A23B72">常见后续问题详解</span>
 
-### 1. Lua如何决定一个键应该放在数组部分还是哈希部分？
+### <span style="color: #2E86AB">1. Lua如何决定一个键应该放在数组部分还是哈希部分？</span>
 
-**技术原理**：
-Lua通过键类型分析和使用模式统计来智能决定键的存储位置，目标是最大化数组部分的利用率。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua</span>通过<span style="color: #C73E1D">键类型分析</span>和<span style="color: #C73E1D">使用模式统计</span>来智能决定键的存储位置，目标是最大化<span style="color: #F18F01">数组部分的利用率</span>。
 
-**决策算法详解**：
+**<span style="color: #A23B72">决策算法详解</span>**：
 ```c
 // ltable.c - 键存储位置决策
 /*
@@ -809,7 +809,7 @@ static unsigned int computesizes (unsigned int nums[], unsigned int *pna) {
 }
 ```
 
-**实际例子**：
+**<span style="color: #A23B72">实际例子</span>**：
 ```lua
 -- 键存储位置决策示例
 local t = {}
@@ -832,12 +832,12 @@ t[1.5] = "float"   -- 浮点数键
 -- 如果键很分散，更多使用哈希部分
 ```
 
-### 2. 表的扩容触发条件是什么？如何避免频繁扩容？
+### <span style="color: #2E86AB">2. 表的扩容触发条件是什么？如何避免频繁扩容？</span>
 
-**技术原理**：
-表扩容是一个复杂的决策过程，需要平衡内存使用、性能和扩容频率。
+**<span style="color: #A23B72">技术原理</span>**：
+表扩容是一个复杂的决策过程，需要平衡<span style="color: #C73E1D">内存使用</span>、<span style="color: #C73E1D">性能</span>和<span style="color: #C73E1D">扩容频率</span>。
 
-**扩容触发条件**：
+**<span style="color: #A23B72">扩容触发条件</span>**：
 ```c
 // ltable.c - 扩容触发机制
 /*
@@ -952,7 +952,7 @@ static int table_new (lua_State *L) {
 }
 ```
 
-**实际优化建议**：
+**<span style="color: #A23B72">实际优化建议</span>**：
 ```lua
 -- 避免频繁扩容的编程技巧
 
@@ -985,10 +985,10 @@ t["config"] = "value"
 t["metadata"] = "info"
 ```
 
-### 3. 为什么Lua选择开放寻址而不是链式哈希？
+### <span style="color: #2E86AB">3. 为什么Lua选择开放寻址而不是链式哈希？</span>
 
-**技术原理**：
-开放寻址法和链式哈希法各有优劣，Lua选择开放寻址法主要基于内存效率和缓存性能的考虑。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">开放寻址法</span>和<span style="color: #F18F01">链式哈希法</span>各有优劣，<span style="color: #F18F01">Lua</span>选择<span style="color: #C73E1D">开放寻址法</span>主要基于<span style="color: #C73E1D">内存效率</span>和<span style="color: #C73E1D">缓存性能</span>的考虑。
 
 **详细对比分析**：
 ```c
@@ -1112,12 +1112,12 @@ static void performance_comparison() {
 }
 ```
 
-### 4. 表的遍历顺序是如何保证的？
+### <span style="color: #2E86AB">4. 表的遍历顺序是如何保证的？</span>
 
-**技术原理**：
-Lua表的遍历顺序并不保证，这是由其混合数据结构的特性决定的。理解遍历机制有助于写出更可靠的代码。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">Lua表</span>的遍历顺序并不保证，这是由其<span style="color: #C73E1D">混合数据结构</span>的特性决定的。理解遍历机制有助于写出更可靠的代码。
 
-**遍历机制详解**：
+**<span style="color: #A23B72">遍历机制详解</span>**：
 ```c
 // ltable.c - 表遍历实现
 /*
@@ -1173,7 +1173,7 @@ static unsigned int findindex (lua_State *L, Table *t, StkId key) {
 }
 ```
 
-**遍历顺序的实际表现**：
+**<span style="color: #A23B72">遍历顺序的实际表现</span>**：
 ```lua
 -- 遍历顺序示例
 local t = {}
@@ -1204,7 +1204,7 @@ end
 -- 3    three
 ```
 
-**遍历的注意事项**：
+**<span style="color: #A23B72">遍历的注意事项</span>**：
 ```c
 // ltable.c - 遍历时的安全考虑
 /*
@@ -1226,10 +1226,10 @@ static void safe_traversal_delete() {
 }
 ```
 
-### 5. 弱引用表是如何实现的？
+### <span style="color: #2E86AB">5. 弱引用表是如何实现的？</span>
 
-**技术原理**：
-弱引用表通过元表的`__mode`字段实现，允许垃圾回收器回收表中的键或值，即使它们仍被表引用。
+**<span style="color: #A23B72">技术原理</span>**：
+<span style="color: #F18F01">弱引用表</span>通过元表的<span style="color: #C73E1D">`__mode`</span>字段实现，允许垃圾回收器回收表中的键或值，即使它们仍被表引用。
 
 **弱引用实现机制**：
 ```c
@@ -1297,7 +1297,7 @@ static void clearkeys (global_State *g, GCObject *l, GCObject *f) {
 }
 ```
 
-**弱引用表的使用示例**：
+**<span style="color: #A23B72">弱引用表的使用示例</span>**：
 ```lua
 -- 弱引用表示例
 
@@ -1341,11 +1341,11 @@ end
 -- 当obj1或obj2被回收时，关联会自动清理
 ```
 
-## 实践应用指南
+## <span style="color: #A23B72">实践应用指南</span>
 
-### 1. 表性能优化
+### <span style="color: #2E86AB">1. 表性能优化</span>
 
-**理解表实现对实际编程的影响**：
+**<span style="color: #A23B72">理解表实现对实际编程的影响</span>**：
 ```lua
 -- 低效的表使用模式
 function bad_table_usage()
@@ -1407,9 +1407,9 @@ function optimize_table_size()
 end
 ```
 
-### 2. 内存友好的表操作
+### <span style="color: #2E86AB">2. 内存友好的表操作</span>
 
-**减少内存分配和提高缓存效率**：
+**<span style="color: #A23B72">减少内存分配和提高缓存效率</span>**：
 ```lua
 -- 内存友好的表操作
 local TableUtils = {}
@@ -1456,9 +1456,9 @@ function TableUtils.cache_friendly_process(t, processor)
 end
 ```
 
-### 3. 表的调试和分析
+### <span style="color: #2E86AB">3. 表的调试和分析</span>
 
-**表结构分析工具**：
+**<span style="color: #A23B72">表结构分析工具</span>**：
 ```lua
 -- 表分析工具
 local TableAnalyzer = {}
@@ -1598,21 +1598,21 @@ function ECS:get_entities_with_components(...)
 end
 ```
 
-## 相关源文件
+## <span style="color: #A23B72">相关源文件</span>
 
-### 核心文件
-- `ltable.c/ltable.h` - 表实现核心代码和算法
-- `lobject.h` - 表结构定义和基础宏
-- `lvm.c` - 表操作的虚拟机指令实现
+### <span style="color: #2E86AB">核心文件</span>
+- <span style="color: #C73E1D">`ltable.c/ltable.h`</span> - 表实现核心代码和算法
+- <span style="color: #C73E1D">`lobject.h`</span> - 表结构定义和基础宏
+- <span style="color: #C73E1D">`lvm.c`</span> - 表操作的虚拟机指令实现
 
-### 支撑文件
-- `lgc.c` - 表的垃圾回收和弱引用处理
-- `lapi.c` - 表相关的C API实现
-- `lbaselib.c` - 表相关的基础库函数
+### <span style="color: #2E86AB">支撑文件</span>
+- <span style="color: #C73E1D">`lgc.c`</span> - 表的垃圾回收和弱引用处理
+- <span style="color: #C73E1D">`lapi.c`</span> - 表相关的C API实现
+- <span style="color: #C73E1D">`lbaselib.c`</span> - 表相关的基础库函数
 
-### 相关组件
-- `lstring.c` - 字符串键的哈希和驻留
-- `lmem.c` - 表的内存分配和管理
-- `ldebug.c` - 表遍历的调试支持
+### <span style="color: #2E86AB">相关组件</span>
+- <span style="color: #C73E1D">`lstring.c`</span> - 字符串键的哈希和驻留
+- <span style="color: #C73E1D">`lmem.c`</span> - 表的内存分配和管理
+- <span style="color: #C73E1D">`ldebug.c`</span> - 表遍历的调试支持
 
-理解这些文件的关系和作用，有助于深入掌握Lua表的完整实现机制和优化策略。
+理解这些文件的关系和作用，有助于深入掌握<span style="color: #F18F01">Lua表</span>的完整实现机制和优化策略。

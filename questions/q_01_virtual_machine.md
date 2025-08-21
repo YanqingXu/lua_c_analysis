@@ -1,56 +1,56 @@
-# Lua虚拟机架构详解
+# <span style="color: #2E86AB; font-weight: bold;">Lua虚拟机架构详解</span>
 
-## 问题
-请详细解释Lua虚拟机的架构设计，包括其核心组件、执行模型和关键数据结构。
+## <span style="color: #A23B72; font-weight: bold;">问题</span>
+<span style="color: #F18F01; font-weight: bold;">请详细解释Lua虚拟机的架构设计，包括其核心组件、执行模型和关键数据结构。</span>
 
-## 通俗概述
+## <span style="color: #2E86AB; font-weight: bold;">通俗概述</span>
 
-想象Lua虚拟机就像一台智能的"翻译执行机器"：
+<span style="color: #4A90A4; font-style: italic;">想象Lua虚拟机就像一台智能的"翻译执行机器"：</span>
 
-**基本工作原理**：你写的Lua代码就像是用中文写的菜谱，而计算机只认识"机器语言"这种特殊的"外语"。Lua虚拟机就是那个"翻译官"，它不是直接把中文翻译成外语，而是先翻译成一种简化的"中间语言"（字节码），然后一步步执行这些简化指令。
+**<span style="color: #C73E1D; font-weight: bold;">基本工作原理</span>**：你写的Lua代码就像是用中文写的菜谱，而计算机只认识"机器语言"这种特殊的"外语"。<span style="color: #2E86AB; font-weight: bold;">Lua虚拟机</span>就是那个
 
-**多角度理解虚拟机**：
-1. **工厂流水线视角**：虚拟机像一条智能流水线，每个指令就是一个工作站，数据在栈上流动，每个工作站处理数据并传递给下一站
-2. **图书管理员视角**：虚拟机是图书管理员，栈是书车，指令是借还书的操作单，管理员按照操作单在书车上整理书籍
-3. **乐队指挥视角**：虚拟机是指挥，字节码是乐谱，各种数据结构是乐器，指挥按照乐谱协调各个乐器演奏
+**<span style="color: #C73E1D; font-weight: bold;">多角度理解虚拟机</span>**：
+1. **<span style="color: #4A90A4; font-weight: bold;">工厂流水线视角</span>**：虚拟机像一条智能流水线，每个<span style="color: #F18F01;">指令</span>就是一个工作站，数据在<span style="color: #2E86AB;">栈</span>上流动，每个工作站处理数据并传递给下一站
+2. **<span style="color: #4A90A4; font-weight: bold;">图书管理员视角</span>**：虚拟机是图书管理员，<span style="color: #2E86AB;">栈</span>是书车，<span style="color: #F18F01;">指令</span>是借还书的操作单，管理员按照操作单在书车上整理书籍
+3. **<span style="color: #4A90A4; font-weight: bold;">乐队指挥视角</span>**：虚拟机是指挥，<span style="color: #F18F01;">字节码</span>是乐谱，各种<span style="color: #2E86AB;">数据结构</span>是乐器，指挥按照乐谱协调各个乐器演奏
 
-**基于栈 vs 基于寄存器的形象对比**：
-- **基于栈（Lua采用）**：像使用计算器，所有操作都通过一个栈进行，简单直观但可能需要更多步骤
-- **基于寄存器（如Dalvik）**：像使用多个临时变量，可以直接操作多个"寄存器"，指令更复杂但可能更高效
+**<span style="color: #C73E1D; font-weight: bold;">基于栈 vs 基于寄存器的形象对比</span>**：
+- **<span style="color: #2E86AB; font-weight: bold;">基于栈（Lua采用）</span>**：像使用计算器，所有操作都通过一个<span style="color: #2E86AB;">栈</span>进行，简单直观但可能需要更多步骤
+- **<span style="color: #A23B72; font-weight: bold;">基于寄存器（如Dalvik）</span>**：像使用多个临时变量，可以直接操作多个
 
-**为什么这样设计**：
-- **跨平台**：就像世界语一样，字节码在任何支持Lua的系统上都能运行
-- **高效执行**：虚拟机专门为执行这些简化指令而优化
-- **易于调试**：可以在执行过程中检查和修改程序状态
-- **简化编译器**：基于栈的设计让编译器实现更简单
+**<span style="color: #C73E1D; font-weight: bold;">为什么这样设计</span>**：
+- **<span style="color: #4A90A4; font-weight: bold;">跨平台</span>**：就像世界语一样，<span style="color: #F18F01;">字节码</span>在任何支持Lua的系统上都能运行
+- **<span style="color: #4A90A4; font-weight: bold;">高效执行</span>**：虚拟机专门为执行这些简化指令而优化
+- **<span style="color: #4A90A4; font-weight: bold;">易于调试</span>**：可以在执行过程中检查和修改程序状态
+- **<span style="color: #4A90A4; font-weight: bold;">简化编译器</span>**：基于栈的设计让编译器实现更简单
 
-**实际意义**：当你运行一个Lua脚本时，实际上是这台"翻译执行机器"在工作。理解它的工作原理，能帮你写出更高效的代码，也能更好地调试程序问题。
+**<span style="color: #C73E1D; font-weight: bold;">实际意义</span>**：当你运行一个Lua脚本时，实际上是这台
 
-## 详细答案
+## <span style="color: #2E86AB; font-weight: bold;">详细答案</span>
 
-### 虚拟机核心架构
+### <span style="color: #A23B72; font-weight: bold;">虚拟机核心架构</span>
 
-**技术概述**：Lua虚拟机是一个基于栈的虚拟机，这种设计简化了指令集，提高了可移植性。主要由以下核心组件构成：
+**<span style="color: #C73E1D; font-weight: bold;">技术概述</span>**：<span style="color: #2E86AB; font-weight: bold;">Lua虚拟机</span>是一个<span style="color: #F18F01; font-weight: bold;">基于栈的虚拟机</span>，这种设计简化了指令集，提高了可移植性。主要由以下核心组件构成：
 
-1. **Lua状态机 (lua_State)**
-   - 定义在 `lstate.h` 中
+1. **<span style="color: #2E86AB; font-weight: bold;">Lua状态机 (lua_State)</span>**
+   - 定义在 <span style="color: #F18F01; font-family: monospace;">`lstate.h`</span> 中
    - 包含虚拟机的所有运行时状态
    - 管理调用栈、全局状态、错误处理等
 
-2. **指令集 (Opcodes)**
-   - 定义在 `lopcodes.h` 中
-   - 基于32位指令格式
+2. **<span style="color: #2E86AB; font-weight: bold;">指令集 (Opcodes)</span>**
+   - 定义在 <span style="color: #F18F01; font-family: monospace;">`lopcodes.h`</span> 中
+   - 基于<span style="color: #A23B72; font-weight: bold;">32位指令格式</span>
    - 支持多种寻址模式
 
-3. **执行引擎**
-   - 主要实现在 `lvm.c` 的 `luaV_execute` 函数
-   - 使用computed goto优化的解释器循环
+3. **<span style="color: #2E86AB; font-weight: bold;">执行引擎</span>**
+   - 主要实现在 <span style="color: #F18F01; font-family: monospace;">`lvm.c`</span> 的 <span style="color: #F18F01; font-family: monospace;">`luaV_execute`</span> 函数
+   - 使用<span style="color: #4A90A4; font-weight: bold;">computed goto优化</span>的解释器循环
 
-### 关键数据结构详解
+### <span style="color: #A23B72; font-weight: bold;">关键数据结构详解</span>
 
-#### 1. Lua状态机 (lua_State)
+#### <span style="color: #4A90A4; font-weight: bold;">1. Lua状态机 (lua_State)</span>
 
-**通俗理解**：lua_State就像一个"虚拟机的控制台"，记录了虚拟机运行时的所有重要信息。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：<span style="color: #2E86AB; font-weight: bold;">lua_State</span>就像一个"<span style="color: #F18F01;">虚拟机的控制台</span>"，记录了虚拟机运行时的所有重要信息。
 
 ```c
 // lstate.h - Lua状态机结构（详细注释版）
@@ -94,15 +94,15 @@ struct lua_State {
 };
 ```
 
-**关键字段解释**：
-- `top` 和 `stack`：就像书桌上的书堆，stack是桌面，top指向最上面的书
-- `ci`：当前正在"阅读"的书的信息（函数调用信息）
-- `l_G`：图书馆的总信息台（全局状态）
-- `openupval`：借出但还没归还的书的清单（开放的upvalue）
+**<span style="color: #C73E1D; font-weight: bold;">关键字段解释</span>**：
+- <span style="color: #F18F01; font-family: monospace;">`top`</span> 和 <span style="color: #F18F01; font-family: monospace;">`stack`</span>：就像书桌上的书堆，<span style="color: #2E86AB;">stack</span>是桌面，<span style="color: #2E86AB;">top</span>指向最上面的书
+- <span style="color: #F18F01; font-family: monospace;">`ci`</span>：当前正在"阅读"的书的信息（<span style="color: #4A90A4;">函数调用信息</span>）
+- <span style="color: #F18F01; font-family: monospace;">`l_G`</span>：图书馆的总信息台（<span style="color: #4A90A4;">全局状态</span>）
+- <span style="color: #F18F01; font-family: monospace;">`openupval`</span>：借出但还没归还的书的清单（<span style="color: #4A90A4;">开放的upvalue</span>）
 
-#### 2. 调用信息 (CallInfo)
+#### <span style="color: #4A90A4; font-weight: bold;">2. 调用信息 (CallInfo)</span>
 
-**通俗理解**：CallInfo就像函数调用的"工作记录卡"，记录了每次函数调用的详细信息。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：<span style="color: #2E86AB; font-weight: bold;">CallInfo</span>就像函数调用的"<span style="color: #F18F01;">工作记录卡</span>"，记录了每次函数调用的详细信息。
 
 ```c
 // lstate.h - 调用信息结构（详细注释版）
@@ -129,9 +129,9 @@ typedef struct CallInfo {
 } CallInfo;
 ```
 
-#### 3. 函数原型 (Proto)
+#### <span style="color: #4A90A4; font-weight: bold;">3. 函数原型 (Proto)</span>
 
-**通俗理解**：Proto就像函数的"设计图纸"，包含了函数的所有静态信息。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：<span style="color: #2E86AB; font-weight: bold;">Proto</span>就像函数的"<span style="color: #F18F01;">设计图纸</span>"，包含了函数的所有静态信息。
 
 ```c
 // lobject.h - 函数原型结构（详细注释版）
@@ -170,19 +170,19 @@ typedef struct Proto {
 } Proto;
 ```
 
-### 虚拟机执行流程详解
+### <span style="color: #A23B72; font-weight: bold;">虚拟机执行流程详解</span>
 
-#### 执行流程概述
+#### <span style="color: #4A90A4; font-weight: bold;">执行流程概述</span>
 
-**通俗理解**：虚拟机执行就像一个高效的"指令处理工厂"：
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：虚拟机执行就像一个高效的"<span style="color: #F18F01;">指令处理工厂</span>"：
 
-1. **取指令**：从"指令传送带"上取下一条指令
-2. **解码**：分析指令的类型和参数
-3. **执行**：根据指令类型执行相应操作
-4. **更新状态**：更新栈、寄存器等状态
-5. **循环**：继续处理下一条指令
+1. **<span style="color: #4A90A4; font-weight: bold;">取指令</span>**：从"指令传送带"上取下一条指令
+2. **<span style="color: #4A90A4; font-weight: bold;">解码</span>**：分析指令的类型和参数
+3. **<span style="color: #4A90A4; font-weight: bold;">执行</span>**：根据指令类型执行相应操作
+4. **<span style="color: #4A90A4; font-weight: bold;">更新状态</span>**：更新栈、寄存器等状态
+5. **<span style="color: #4A90A4; font-weight: bold;">循环</span>**：继续处理下一条指令
 
-#### 核心执行循环
+#### <span style="color: #4A90A4; font-weight: bold;">核心执行循环</span>
 
 ```c
 // lvm.c - 核心执行循环（详细注释版）
@@ -303,9 +303,9 @@ void luaV_execute (lua_State *L) {
 }
 ```
 
-#### 指令解码机制
+#### <span style="color: #4A90A4; font-weight: bold;">指令解码机制</span>
 
-**通俗理解**：每条32位指令就像一个"信息包裹"，需要拆开包装取出有用信息。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：每条<span style="color: #A23B72; font-weight: bold;">32位指令</span>就像一个"<span style="color: #F18F01;">信息包裹</span>"，需要拆开包装取出有用信息。
 
 ```c
 // lopcodes.h - 指令格式和解码宏
@@ -340,11 +340,11 @@ void luaV_execute (lua_State *L) {
                           ISK(GETARG_C(i)) ? k+INDEXK(GETARG_C(i)) : base+GETARG_C(i))
 ```
 
-### 虚拟机与其他组件的交互
+### <span style="color: #A23B72; font-weight: bold;">虚拟机与其他组件的交互</span>
 
-#### 1. 与垃圾回收器的交互
+#### <span style="color: #4A90A4; font-weight: bold;">1. 与垃圾回收器的交互</span>
 
-**通俗理解**：虚拟机执行过程中会不断创建对象，垃圾回收器就像"清洁工"，定期清理不用的对象。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：虚拟机执行过程中会不断创建对象，<span style="color: #2E86AB; font-weight: bold;">垃圾回收器</span>就像"<span style="color: #F18F01;">清洁工</span>"，定期清理不用的对象。
 
 ```c
 // lvm.c - 虚拟机中的GC交互示例
@@ -361,7 +361,7 @@ vmcase(OP_NEWTABLE) {
 }
 ```
 
-#### 2. 与字符串管理的交互
+#### <span style="color: #4A90A4; font-weight: bold;">2. 与字符串管理的交互</span>
 
 ```c
 // lvm.c - 字符串操作示例
@@ -379,9 +379,9 @@ vmcase(OP_CONCAT) {
 }
 ```
 
-#### 3. 与栈管理的交互
+#### <span style="color: #4A90A4; font-weight: bold;">3. 与栈管理的交互</span>
 
-**通俗理解**：虚拟机执行时需要不断检查栈空间，就像厨师做菜时要确保工作台够用。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：虚拟机执行时需要不断检查<span style="color: #2E86AB;">栈空间</span>，就像厨师做菜时要确保工作台够用。
 
 ```c
 // lvm.c - 栈管理交互示例
@@ -404,11 +404,11 @@ vmcase(OP_CALL) {
 }
 ```
 
-### 虚拟机优化技术
+### <span style="color: #A23B72; font-weight: bold;">虚拟机优化技术</span>
 
-#### 1. Computed Goto优化
+#### <span style="color: #4A90A4; font-weight: bold;">1. Computed Goto优化</span>
 
-**通俗理解**：传统的switch语句像"查字典"，每次都要从头找；computed goto像"书签"，直接跳到目标位置。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：传统的<span style="color: #F18F01;">switch语句</span>像"查字典"，每次都要从头找；<span style="color: #2E86AB; font-weight: bold;">computed goto</span>像"书签"，直接跳到目标位置。
 
 ```c
 // lvm.c - Computed Goto优化
@@ -443,9 +443,9 @@ void luaV_execute (lua_State *L) {
 #endif
 ```
 
-#### 2. 指令融合优化
+#### <span style="color: #4A90A4; font-weight: bold;">2. 指令融合优化</span>
 
-**通俗理解**：把常见的指令组合"打包"成一个操作，就像把"洗菜+切菜"合并成"备菜"。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：把常见的<span style="color: #F18F01;">指令组合</span>"打包"成一个操作，就像把"洗菜+切菜"合并成"备菜"。
 
 ```c
 // lcode.c - 指令融合示例
@@ -468,9 +468,9 @@ static void discharge2reg (FuncState *fs, expdesc *e, int reg) {
 }
 ```
 
-#### 3. 内联缓存优化
+#### <span style="color: #4A90A4; font-weight: bold;">3. 内联缓存优化</span>
 
-**通俗理解**：记住上次查找的结果，下次遇到相同情况直接使用，就像"常用联系人"功能。
+**<span style="color: #C73E1D; font-weight: bold;">通俗理解</span>**：记住上次查找的结果，下次遇到相同情况直接使用，就像"<span style="color: #F18F01;">常用联系人</span>"功能。
 
 ```c
 // lvm.c - 表访问优化示例
@@ -494,21 +494,21 @@ vmcase(OP_GETTABLE) {
 }
 ```
 
-## 面试官关注要点
+## <span style="color: #C73E1D; font-weight: bold; font-size: 1.2em;">面试官关注要点</span>
 
-1. **架构理解**：能否清楚解释基于栈的虚拟机vs基于寄存器的虚拟机
-2. **性能考虑**：computed goto优化、指令缓存局部性
-3. **内存管理**：栈的动态增长、垃圾回收集成
-4. **错误处理**：longjmp机制、错误传播
+1. **<span style="color: #2E86AB; font-weight: bold;">架构理解</span>**：能否清楚解释<span style="color: #F18F01;">基于栈的虚拟机</span>vs<span style="color: #A23B72;">基于寄存器的虚拟机</span>
+2. **<span style="color: #2E86AB; font-weight: bold;">性能考虑</span>**：<span style="color: #F18F01;">computed goto优化</span>、<span style="color: #F18F01;">指令缓存局部性</span>
+3. **<span style="color: #2E86AB; font-weight: bold;">内存管理</span>**：<span style="color: #F18F01;">栈的动态增长</span>、<span style="color: #F18F01;">垃圾回收集成</span>
+4. **<span style="color: #2E86AB; font-weight: bold;">错误处理</span>**：<span style="color: #F18F01;">longjmp机制</span>、<span style="color: #F18F01;">错误传播</span>
 
-## 常见后续问题详解
+## <span style="color: #C73E1D; font-weight: bold; font-size: 1.2em;">常见后续问题详解</span>
 
-### 1. 为什么Lua选择基于栈的虚拟机而不是基于寄存器的？
+### <span style="color: #A23B72; font-weight: bold;">1. 为什么Lua选择基于栈的虚拟机而不是基于寄存器的？</span>
 
-**技术原理**：
-基于栈的虚拟机使用栈作为主要的操作数存储，而基于寄存器的虚拟机使用虚拟寄存器。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+<span style="color: #2E86AB; font-weight: bold;">基于栈的虚拟机</span>使用栈作为主要的操作数存储，而<span style="color: #A23B72; font-weight: bold;">基于寄存器的虚拟机</span>使用虚拟寄存器。
 
-**详细对比**：
+**<span style="color: #C73E1D; font-weight: bold;">详细对比</span>**：
 
 | 特性 | 基于栈（Lua） | 基于寄存器（Dalvik） |
 |------|---------------|---------------------|
@@ -518,7 +518,7 @@ vmcase(OP_GETTABLE) {
 | 代码大小 | 较大 | 较小 |
 | 执行效率 | 中等 | 可能更高 |
 
-**源码支撑**：
+**<span style="color: #C73E1D; font-weight: bold;">源码支撑</span>**：
 ```c
 // 基于栈的加法操作（Lua）
 vmcase(OP_ADD) {
@@ -537,12 +537,12 @@ vmcase(OP_ADD) {
 // 需要明确指定三个寄存器
 ```
 
-**设计权衡考虑**：
-1. **简化编译器**：基于栈的设计让编译器实现更简单，不需要复杂的寄存器分配算法
-2. **可移植性**：栈模型更容易在不同架构上实现
-3. **代码密度vs执行效率**：Lua选择了实现简单性而不是极致性能
+**<span style="color: #C73E1D; font-weight: bold;">设计权衡考虑</span>**：
+1. **<span style="color: #4A90A4; font-weight: bold;">简化编译器</span>**：基于栈的设计让编译器实现更简单，不需要复杂的寄存器分配算法
+2. **<span style="color: #4A90A4; font-weight: bold;">可移植性</span>**：栈模型更容易在不同架构上实现
+3. **<span style="color: #4A90A4; font-weight: bold;">代码密度vs执行效率</span>**：Lua选择了实现简单性而不是极致性能
 
-**实际例子**：
+**<span style="color: #C73E1D; font-weight: bold;">实际例子</span>**：
 ```lua
 -- Lua代码
 local a = b + c
@@ -557,12 +557,12 @@ SETLOCAL a    -- 弹出结果，存储到a
 ADD R1, R2, R3  -- 直接计算R2+R3存储到R1
 ```
 
-### 2. Lua的指令格式是如何设计的？支持哪些寻址模式？
+### <span style="color: #A23B72; font-weight: bold;">2. Lua的指令格式是如何设计的？支持哪些寻址模式？</span>
 
-**技术原理**：
-Lua使用32位固定长度指令，支持三种基本格式和多种寻址模式。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+Lua使用<span style="color: #F18F01; font-weight: bold;">32位固定长度指令</span>，支持三种基本格式和多种寻址模式。
 
-**指令格式详解**：
+**<span style="color: #C73E1D; font-weight: bold;">指令格式详解</span>**：
 ```c
 // lopcodes.h - 指令格式定义
 /*
@@ -585,7 +585,7 @@ iAsBx格式：用于有符号跳转
 enum OpMode {iABC, iABx, iAsBx, iAx};  /* 指令格式 */
 ```
 
-**寻址模式详解**：
+**<span style="color: #C73E1D; font-weight: bold;">寻址模式详解</span>**：
 ```c
 // lopcodes.h - 寻址模式
 enum OpArgMask {
@@ -606,7 +606,7 @@ enum OpArgMask {
 #define RKC(i) (ISK(GETARG_C(i)) ? k+INDEXK(GETARG_C(i)) : base+GETARG_C(i))
 ```
 
-**实际例子**：
+**<span style="color: #C73E1D; font-weight: bold;">实际例子</span>**：
 ```lua
 -- Lua代码
 local a = 10 + b
@@ -616,17 +616,17 @@ LOADK  R0, K0    -- R0 = 10 (常量寻址)
 ADD    R1, R0, R2 -- R1 = R0 + R2 (寄存器寻址)
 ```
 
-**性能考虑**：
-- 32位固定长度简化了指令解码
-- RK寻址模式减少了指令数量
-- 6位操作码支持64种指令，足够使用
+**<span style="color: #C73E1D; font-weight: bold;">性能考虑</span>**：
+- <span style="color: #4A90A4;">32位固定长度</span>简化了指令解码
+- <span style="color: #4A90A4;">RK寻址模式</span>减少了指令数量
+- <span style="color: #4A90A4;">6位操作码</span>支持64种指令，足够使用
 
-### 3. 虚拟机如何处理函数调用和返回？
+### <span style="color: #A23B72; font-weight: bold;">3. 虚拟机如何处理函数调用和返回？</span>
 
-**技术原理**：
-函数调用涉及栈帧管理、参数传递、局部变量分配等复杂操作。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+函数调用涉及<span style="color: #F18F01;">栈帧管理</span>、<span style="color: #F18F01;">参数传递</span>、<span style="color: #F18F01;">局部变量分配</span>等复杂操作。
 
-**调用过程详解**：
+**<span style="color: #C73E1D; font-weight: bold;">调用过程详解</span>**：
 ```c
 // ldo.c - 函数调用准备
 int luaD_precall (lua_State *L, StkId func, int nresults) {
@@ -689,7 +689,7 @@ int luaD_precall (lua_State *L, StkId func, int nresults) {
 }
 ```
 
-**返回过程详解**：
+**<span style="color: #C73E1D; font-weight: bold;">返回过程详解</span>**：
 ```c
 // ldo.c - 函数返回处理
 int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
@@ -715,7 +715,7 @@ int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
 }
 ```
 
-**栈帧布局**：
+**<span style="color: #C73E1D; font-weight: bold;">栈帧布局</span>**：
 ```
 调用前栈布局：
 ┌─────────────┐
@@ -742,12 +742,12 @@ int luaD_poscall (lua_State *L, CallInfo *ci, StkId firstResult, int nres) {
 └─────────────┘
 ```
 
-### 4. Lua的协程是如何在虚拟机层面实现的？
+### <span style="color: #A23B72; font-weight: bold;">4. Lua的协程是如何在虚拟机层面实现的？</span>
 
-**技术原理**：
-协程通过独立的lua_State实现，每个协程有自己的栈和调用链。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+<span style="color: #2E86AB; font-weight: bold;">协程</span>通过独立的<span style="color: #F18F01;">lua_State</span>实现，每个协程有自己的栈和调用链。
 
-**协程创建**：
+**<span style="color: #C73E1D; font-weight: bold;">协程创建</span>**：
 ```c
 // lstate.c - 协程创建
 lua_State *lua_newthread (lua_State *L) {
@@ -776,7 +776,7 @@ lua_State *lua_newthread (lua_State *L) {
 }
 ```
 
-**协程切换机制**：
+**<span style="color: #C73E1D; font-weight: bold;">协程切换机制</span>**：
 ```c
 // ldo.c - yield实现
 int lua_yieldk (lua_State *L, int nresults, lua_KContext ctx, lua_KFunction k) {
@@ -852,7 +852,7 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs) {
 }
 ```
 
-**协程状态转换**：
+**<span style="color: #C73E1D; font-weight: bold;">协程状态转换</span>**：
 ```
 ┌─────────┐  lua_newthread  ┌─────────┐
 │ 不存在  │ ──────────────→ │ 暂停    │
@@ -874,12 +874,12 @@ LUA_API int lua_resume (lua_State *L, lua_State *from, int nargs) {
                └─────────┘  └─────────┘  └─────────┘
 ```
 
-### 5. 虚拟机的调试支持是如何实现的？
+### <span style="color: #A23B72; font-weight: bold;">5. 虚拟机的调试支持是如何实现的？</span>
 
-**技术原理**：
-Lua虚拟机内置了完整的调试支持，通过钩子机制和调试API实现。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+Lua虚拟机内置了完整的<span style="color: #2E86AB; font-weight: bold;">调试支持</span>，通过<span style="color: #F18F01;">钩子机制</span>和<span style="color: #F18F01;">调试API</span>实现。
 
-**调试钩子机制**：
+**<span style="color: #C73E1D; font-weight: bold;">调试钩子机制</span>**：
 ```c
 // ldebug.c - 调试钩子
 void luaD_hook (lua_State *L, int event, int line) {
@@ -904,7 +904,7 @@ void luaD_hook (lua_State *L, int event, int line) {
 }
 ```
 
-**行号跟踪**：
+**<span style="color: #C73E1D; font-weight: bold;">行号跟踪</span>**：
 ```c
 // lvm.c - 虚拟机中的行号跟踪
 void luaV_execute (lua_State *L) {
@@ -930,12 +930,12 @@ void luaV_execute (lua_State *L) {
 }
 ```
 
-### 6. 虚拟机的错误处理机制是什么？
+### <span style="color: #A23B72; font-weight: bold;">6. 虚拟机的错误处理机制是什么？</span>
 
-**技术原理**：
-Lua使用longjmp/setjmp机制实现异常处理，类似于其他语言的try/catch。
+**<span style="color: #C73E1D; font-weight: bold;">技术原理</span>**：
+Lua使用<span style="color: #F18F01; font-weight: bold;">longjmp/setjmp机制</span>实现异常处理，类似于其他语言的<span style="color: #4A90A4;">try/catch</span>。
 
-**错误处理结构**：
+**<span style="color: #C73E1D; font-weight: bold;">错误处理结构</span>**：
 ```c
 // ldo.c - 错误处理
 struct lua_longjmp {
@@ -975,9 +975,9 @@ l_noret luaD_throw (lua_State *L, int errcode) {
 }
 ```
 
-### 7. 虚拟机的性能优化还有哪些技术？
+### <span style="color: #A23B72; font-weight: bold;">7. 虚拟机的性能优化还有哪些技术？</span>
 
-**1. 快速路径优化**：
+**<span style="color: #4A90A4; font-weight: bold;">1. 快速路径优化</span>**：
 ```c
 // lvm.c - 表访问快速路径
 vmcase(OP_GETTABLE) {
@@ -1001,7 +1001,7 @@ vmcase(OP_GETTABLE) {
 }
 ```
 
-**2. 内联展开**：
+**<span style="color: #4A90A4; font-weight: bold;">2. 内联展开</span>**：
 ```c
 // lvm.c - 算术运算内联
 vmcase(OP_ADD) {
@@ -1025,7 +1025,7 @@ vmcase(OP_ADD) {
 }
 ```
 
-**3. 分支预测优化**：
+**<span style="color: #4A90A4; font-weight: bold;">3. 分支预测优化</span>**：
 ```c
 // lvm.c - 条件跳转优化
 vmcase(OP_TEST) {
@@ -1036,11 +1036,11 @@ vmcase(OP_TEST) {
 }
 ```
 
-## 实践应用指南
+## <span style="color: #C73E1D; font-weight: bold; font-size: 1.2em;">实践应用指南</span>
 
-### 1. 性能调优建议
+### <span style="color: #A23B72; font-weight: bold;">1. 性能调优建议</span>
 
-**理解虚拟机原理对实际编程的帮助**：
+**<span style="color: #C73E1D; font-weight: bold;">理解虚拟机原理对实际编程的帮助</span>**：
 
 ```lua
 -- 低效代码：频繁的表查找
@@ -1059,11 +1059,11 @@ function good_example()
 end
 ```
 
-**原理解释**：第一种写法每次循环都会执行`GETTABUP`和`GETTABLE`指令，而第二种只在开始时执行一次。
+**<span style="color: #C73E1D; font-weight: bold;">原理解释</span>**：第一种写法每次循环都会执行<span style="color: #F18F01; font-family: monospace;">`GETTABUP`</span>和<span style="color: #F18F01; font-family: monospace;">`GETTABLE`</span>指令，而第二种只在开始时执行一次。
 
-### 2. 调试技巧
+### <span style="color: #A23B72; font-weight: bold;">2. 调试技巧</span>
 
-**利用虚拟机调试信息**：
+**<span style="color: #C73E1D; font-weight: bold;">利用虚拟机调试信息</span>**：
 ```lua
 -- 设置调试钩子
 debug.sethook(function(event, line)
@@ -1076,9 +1076,9 @@ debug.sethook(function(event, line)
 end, "cl")  -- 监听调用和行事件
 ```
 
-### 3. 内存优化
+### <span style="color: #A23B72; font-weight: bold;">3. 内存优化</span>
 
-**理解栈管理对内存使用的影响**：
+**<span style="color: #C73E1D; font-weight: bold;">理解栈管理对内存使用的影响</span>**：
 ```lua
 -- 避免深度递归，使用迭代
 function factorial_bad(n)
@@ -1095,9 +1095,9 @@ function factorial_good(n)
 end
 ```
 
-### 4. 协程最佳实践
+### <span style="color: #A23B72; font-weight: bold;">4. 协程最佳实践</span>
 
-**利用协程实现异步操作**：
+**<span style="color: #C73E1D; font-weight: bold;">利用协程实现异步操作</span>**：
 ```lua
 -- 模拟异步文件读取
 function async_read_file(filename)
@@ -1156,23 +1156,23 @@ function benchmark(func, iterations)
 end
 ```
 
-## 相关源文件
+## <span style="color: #C73E1D; font-weight: bold; font-size: 1.2em;">相关源文件</span>
 
-### 核心文件
-- `lvm.c/lvm.h` - 虚拟机执行引擎核心
-- `lstate.c/lstate.h` - Lua状态管理和线程
-- `ldo.c/ldo.h` - 执行控制、栈管理、错误处理
-- `lopcodes.c/lopcodes.h` - 指令集定义和操作
+### <span style="color: #A23B72; font-weight: bold;">核心文件</span>
+- <span style="color: #F18F01; font-family: monospace;">`lvm.c/lvm.h`</span> - <span style="color: #2E86AB;">虚拟机执行引擎核心</span>
+- <span style="color: #F18F01; font-family: monospace;">`lstate.c/lstate.h`</span> - <span style="color: #2E86AB;">Lua状态管理和线程</span>
+- <span style="color: #F18F01; font-family: monospace;">`ldo.c/ldo.h`</span> - <span style="color: #2E86AB;">执行控制、栈管理、错误处理</span>
+- <span style="color: #F18F01; font-family: monospace;">`lopcodes.c/lopcodes.h`</span> - <span style="color: #2E86AB;">指令集定义和操作</span>
 
-### 支撑文件
-- `lfunc.c/lfunc.h` - 函数对象和闭包管理
-- `ldebug.c/ldebug.h` - 调试支持和钩子机制
-- `lobject.c/lobject.h` - 基础对象类型定义
-- `ltm.c/ltm.h` - 元方法和元表支持
+### <span style="color: #A23B72; font-weight: bold;">支撑文件</span>
+- <span style="color: #F18F01; font-family: monospace;">`lfunc.c/lfunc.h`</span> - <span style="color: #2E86AB;">函数对象和闭包管理</span>
+- <span style="color: #F18F01; font-family: monospace;">`ldebug.c/ldebug.h`</span> - <span style="color: #2E86AB;">调试支持和钩子机制</span>
+- <span style="color: #F18F01; font-family: monospace;">`lobject.c/lobject.h`</span> - <span style="color: #2E86AB;">基础对象类型定义</span>
+- <span style="color: #F18F01; font-family: monospace;">`ltm.c/ltm.h`</span> - <span style="color: #2E86AB;">元方法和元表支持</span>
 
-### 编译相关
-- `lcode.c/lcode.h` - 代码生成和优化
-- `lparser.c/lparser.h` - 语法分析
-- `llex.c/llex.h` - 词法分析
+### <span style="color: #A23B72; font-weight: bold;">编译相关</span>
+- <span style="color: #F18F01; font-family: monospace;">`lcode.c/lcode.h`</span> - <span style="color: #2E86AB;">代码生成和优化</span>
+- <span style="color: #F18F01; font-family: monospace;">`lparser.c/lparser.h`</span> - <span style="color: #2E86AB;">语法分析</span>
+- <span style="color: #F18F01; font-family: monospace;">`llex.c/llex.h`</span> - <span style="color: #2E86AB;">词法分析</span>
 
-理解这些文件的关系和作用，有助于深入掌握Lua虚拟机的完整架构。
+理解这些文件的关系和作用，有助于深入掌握<span style="color: #2E86AB; font-weight: bold;">Lua虚拟机的完整架构</span>。
