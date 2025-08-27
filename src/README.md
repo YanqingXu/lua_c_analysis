@@ -8,9 +8,11 @@
 
 本目录中的所有文件都是从项目根目录的对应文件复制而来：
 
+- `src/lapi.c` ← `lapi.c`
 - `src/lcode.c` ← `lcode.c`
 - `src/ldebug.c` ← `ldebug.c`
 - `src/ldo.c` ← `ldo.c`
+- `src/ldump.c` ← `ldump.c`
 - `src/lfunc.c` ← `lfunc.c`
 - `src/lgc.c` ← `lgc.c`
 - `src/llex.c` ← `llex.c`
@@ -19,13 +21,17 @@
 - `src/lmem.h` ← `lmem.h`
 - `src/lobject.c` ← `lobject.c`
 - `src/lobject.h` ← `lobject.h`
+- `src/lopcodes.c` ← `lopcodes.c`
 - `src/lparser.c` ← `lparser.c`
 - `src/lstate.c` ← `lstate.c`
 - `src/lstate.h` ← `lstate.h`
 - `src/lstring.c` ← `lstring.c`
 - `src/ltable.c` ← `ltable.c`
+- `src/ltm.c` ← `ltm.c`
 - `src/luaconf.h` ← `luaconf.h`
+- `src/lundump.c` ← `lundump.c`
 - `src/lvm.c` ← `lvm.c`
+- `src/lzio.c` ← `lzio.c`
 
 ## 修改内容
 
@@ -74,7 +80,7 @@
 - **函数头注释**：包含功能概述、算法复杂度、使用示例
 
 #### 代码缩进和对齐
-- **统一缩进**：使用一致的缩进风格（2个空格）
+- **统一缩进**：使用一致的缩进风格（4个空格）
 - **运算符对齐**：长表达式中的运算符进行垂直对齐
 - **条件语句**：复杂条件分行显示，逻辑运算符对齐
 - **数组初始化**：多元素数组采用垂直布局，便于阅读
@@ -175,7 +181,7 @@ else
 ```
 
 ##### 嵌套控制结构格式
-- **缩进层次**：每层嵌套增加2个空格缩进
+- **缩进层次**：每层嵌套增加4个空格缩进
 - **大括号对齐**：同级大括号垂直对齐
 - **逻辑清晰**：通过格式化突出代码的逻辑层次
 
