@@ -33,16 +33,8 @@
 ** See Copyright Notice in lua.h
 */
 
-#ifndef lparser_h
-#define lparser_h
-
-#include "llimits.h"
-#include "lobject.h"
-#include "lzio.h"
-
-
-#ifndef lparser_h
-#define lparser_h
+// #ifndef lparser_h
+// #define lparser_h
 
 #include "llimits.h"
 #include "lobject.h"
@@ -518,4 +510,4 @@ LUAI_FUNC Proto *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff,
                                             const char *name);
 
 
-#endif
+//#endif
