@@ -1615,4 +1615,4 @@ static int advanced_coroutine_management(lua_State *L) {
 
 ---
 
-*注：本文档基于 <span style="color: #F18F01">Lua 5.1.1</span> 源代码分析，重点关注 <span style="color: #C73E1D">ldo.h</span> 和 <span style="color: #C73E1D">ldo.c</span> 的实现细节*
+*注：本文档基于 <span style="color: #F18F01">Lua 5.1.5</span> 源代码分析，重点关注 <span style="color: #C73E1D">ldo.h</span> 和 <span style="color: #C73E1D">ldo.c</span> 的实现细节*

@@ -52,33 +52,40 @@ void luaV_execute (lua_State *L, int nexeccalls) {
   StkId base;
   TValue *k;
   const Instruction *pc;
-
-reentry:  // 重入点（用于尾调用）
+ reentry:  /* entry point */
   lua_assert(isLua(L->ci));
   pc = L->savedpc;
   cl = &clvalue(L->ci->func)->l;
   base = L->base;
-  k = cl->p->k;  // 常量表
-  
-  // 主执行循环
+  k = cl->p->k;
+  /* main loop of interpreter */
   for (;;) {
-    const Instruction i = *pc++;  // 获取指令并递增 PC
-    StkId ra = RA(i);             // 获取 A 操作数
-    
+    const Instruction i = *pc++;
+    StkId ra;
+    if ((L->hookmask & (LUA_MASKLINE | LUA_MASKCOUNT)) &&
+        (--L->hookcount == 0 || L->hookmask & LUA_MASKLINE)) {
+      traceexec(L, pc);
+      if (L->status == LUA_YIELD) {  /* did hook yield? */
+        L->savedpc = pc - 1;
+        return;
+      }
+      base = L->base;
+    }
+    /* warning!! several calls may realloc the stack and invalidate `ra' */
+    ra = RA(i);
     lua_assert(base == L->base && L->base == L->ci->base);
     lua_assert(base <= L->top && L->top <= L->stack + L->stacksize);
     lua_assert(L->top == L->ci->top || luaG_checkopenop(i));
-    
-    switch (GET_OPCODE(i)) {      // 指令分发
+    switch (GET_OPCODE(i)) {
       case OP_MOVE: {
         setobjs2s(L, ra, RB(i));
-        break;
+        continue;
       }
       case OP_LOADK: {
         setobj2s(L, ra, KBx(i));
-        break;
+        continue;
       }
-      // ... 其他指令
+      /* ... 其他指令 */
     }
   }
 }

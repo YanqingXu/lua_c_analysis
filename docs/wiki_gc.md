@@ -56,12 +56,14 @@ union GCObject {
 ### 3. GC 状态
 
 ```c
-// 垃圾回收器状态
-#define GCSpause        0  // 暂停状态
-#define GCSpropagate    1  // 传播标记
-#define GCSsweepstring  2  // 清除字符串
-#define GCSsweep        3  // 清除对象
-#define GCSfinalize     4  // 终结化
+/*
+** Possible states of the Garbage Collector
+*/
+#define GCSpause	0
+#define GCSpropagate	1
+#define GCSsweepstring	2
+#define GCSsweep	3
+#define GCSfinalize	4
 ```
 
 ## 全局 GC 状态

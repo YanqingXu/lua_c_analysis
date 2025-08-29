@@ -1123,6 +1123,7 @@ make luac     # 编译字节码编译器
 主要的编译单元：
 - **<span style="color: #C73E1D">lua</span>**: 交互式解释器 (<span style="color: #C73E1D">lua.c</span>)
 - **<span style="color: #C73E1D">luac</span>**: 字节码编译器 (<span style="color: #C73E1D">luac.c</span>)
+- **<span style="color: #C73E1D">print</span>**: 字节码打印工具 (<span style="color: #C73E1D">print.c</span>)
 - **<span style="color: #C73E1D">liblua.a</span>**: 静态库文件
 
 ## <span style="color: #A23B72">设计哲学</span>
@@ -1238,4 +1239,4 @@ make luac     # 编译字节码编译器
 
 ---
 
-*注：本文档基于 <span style="color: #F18F01">Lua 5.1.1</span> 源代码分析，版权归 <span style="color: #F18F01">Lua.org, PUC-Rio</span> 所有*
+*注：本文档基于 <span style="color: #F18F01">Lua 5.1.5</span> 源代码分析，版权归 <span style="color: #F18F01">Lua.org, PUC-Rio</span> 所有*

@@ -9,16 +9,20 @@ Lua 的对象系统是整个语言的基础，提供了统一的值表示和类�
 ### 1. Tagged Value (TValue)
 
 ```c
+/*
+** Union of all Lua values
+*/
 typedef union {
-  GCObject *gc;    // 指向 GC 对象
-  void *p;         // 轻量用户数据指针
-  lua_Number n;    // 数字值
-  int b;           // 布尔值
+  GCObject *gc;
+  void *p;
+  lua_Number n;
+  int b;
 } Value;
 
+#define TValuefields	Value value; int tt
+
 typedef struct lua_TValue {
-  Value value;     // 值联合
-  int tt;          // 类型标记
+  TValuefields;
 } TValue;
 ```
 
