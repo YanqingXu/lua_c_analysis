@@ -71,11 +71,20 @@
 ** - 保证序列化的原子性
 */
 typedef struct {
-    lua_State* L;        /* Lua状态机 */
-    lua_Writer writer;   /* 输出回调函数 */
-    void* data;          /* 用户数据 */
-    int strip;           /* 调试信息剥离标志 */
-    int status;          /* 序列化状态 */
+    // Lua状态机指针
+    lua_State* L;
+
+    // 用户提供的输出回调函数
+    lua_Writer writer;
+
+    // 传递给writer函数的用户数据
+    void* data;
+
+    // 调试信息剥离标志（1=剥离，0=保留）
+    int strip;
+
+    // 当前序列化状态（0=成功，非0=错误码）
+    int status;
 } DumpState;
 
 
@@ -128,25 +137,16 @@ typedef struct {
 */
 static void DumpBlock(const void* b, size_t size, DumpState* D)
 {
-    /*
-    ** [状态检查] 只在无错误时继续操作
-    */
+    // 检查当前状态是否正常，只在无错误时继续操作
     if (D->status == 0)
     {
-        /*
-        ** [线程安全] 解锁状态机允许I/O操作
-        ** writer函数可能执行阻塞的文件或网络I/O
-        */
+        // 解锁Lua状态机，允许writer函数执行可能阻塞的I/O操作
         lua_unlock(D->L);
-        
-        /*
-        ** [数据输出] 调用用户提供的writer函数
-        */
+
+        // 调用用户提供的writer函数输出数据
         D->status = (*D->writer)(D->L, b, size, D->data);
-        
-        /*
-        ** [状态恢复] 重新锁定状态机
-        */
+
+        // 重新锁定Lua状态机，恢复线程安全状态
         lua_lock(D->L);
     }
 }
@@ -178,7 +178,10 @@ static void DumpBlock(const void* b, size_t size, DumpState* D)
 */
 static void DumpChar(int y, DumpState* D)
 {
+    // 将整数值安全转换为字符类型
     char x = (char)y;
+
+    // 使用DumpVar宏输出字符变量
     DumpVar(x, D);
 }
 
@@ -210,6 +213,7 @@ static void DumpChar(int y, DumpState* D)
 */
 static void DumpInt(int x, DumpState* D)
 {
+    // 使用DumpVar宏输出整数变量
     DumpVar(x, D);
 }
 
@@ -240,6 +244,7 @@ static void DumpInt(int x, DumpState* D)
 */
 static void DumpNumber(lua_Number x, DumpState* D)
 {
+    // 使用DumpVar宏输出数值变量
     DumpVar(x, D);
 }
 
@@ -272,14 +277,10 @@ static void DumpNumber(lua_Number x, DumpState* D)
 */
 static void DumpVector(const void* b, int n, size_t size, DumpState* D)
 {
-    /*
-    ** [元素数量] 首先输出数组大小
-    */
+    // 首先输出数组元素数量
     DumpInt(n, D);
-    
-    /*
-    ** [数组数据] 批量输出所有元素
-    */
+
+    // 批量输出所有数组元素的原始数据
     DumpMem(b, n, size, D);
 }
 
@@ -316,32 +317,22 @@ static void DumpVector(const void* b, int n, size_t size, DumpState* D)
 */
 static void DumpString(const TString* s, DumpState* D)
 {
-    /*
-    ** [NULL检查] 处理NULL字符串的特殊情况
-    */
+    // 检查是否为NULL字符串的特殊情况
     if (s == NULL || getstr(s) == NULL)
     {
-        /*
-        ** [空字符串] 输出长度0表示NULL字符串
-        */
+        // 输出长度0表示NULL字符串
         size_t size = 0;
         DumpVar(size, D);
     }
     else
     {
-        /*
-        ** [字符串长度] 计算包含尾部'\0'的完整长度
-        */
+        // 计算包含尾部'\0'的完整字符串长度
         size_t size = s->tsv.len + 1;
-        
-        /*
-        ** [长度输出] 首先输出字符串长度
-        */
+
+        // 首先输出字符串长度信息
         DumpVar(size, D);
-        
-        /*
-        ** [内容输出] 输出字符串内容（包含尾部'\0'）
-        */
+
+        // 输出字符串内容（包含尾部的空字符）
         DumpBlock(getstr(s), size, D);
     }
 }
@@ -403,75 +394,63 @@ static void DumpFunction(const Proto* f, const TString* p, DumpState* D);
 static void DumpConstants(const Proto* f, DumpState* D)
 {
     int i, n = f->sizek;
-    
-    /*
-    ** [常量数量] 输出基础常量表大小
-    */
+
+    // 输出基础常量表的大小
     DumpInt(n, D);
-    
-    /*
-    ** [常量输出] 逐个输出每个常量
-    */
+
+    // 逐个输出每个常量的类型和值
     for (i = 0; i < n; i++)
     {
         const TValue* o = &f->k[i];
-        
-        /*
-        ** [类型标识] 首先输出常量的类型
-        */
+
+        // 首先输出常量的类型标识符
         DumpChar(ttype(o), D);
-        
-        /*
-        ** [值输出] 根据类型输出对应的值
-        */
+
+        // 根据常量类型输出对应的值数据
         switch (ttype(o))
         {
             case LUA_TNIL:
             {
-                /* nil值不需要额外数据 */
+                // nil值不需要输出额外数据
                 break;
             }
-            
+
             case LUA_TBOOLEAN:
             {
+                // 输出布尔值（0或1）
                 DumpChar(bvalue(o), D);
                 break;
             }
-            
+
             case LUA_TNUMBER:
             {
+                // 输出数值常量
                 DumpNumber(nvalue(o), D);
                 break;
             }
-            
+
             case LUA_TSTRING:
             {
+                // 输出字符串常量
                 DumpString(rawtsvalue(o), D);
                 break;
             }
-            
+
             default:
             {
-                /*
-                ** [异常情况] 不应该出现的常量类型
-                ** 在调试模式下断言失败
-                */
+                // 不应该出现的常量类型，调试模式下断言失败
                 lua_assert(0);
                 break;
             }
         }
     }
-    
-    /*
-    ** [嵌套函数] 输出函数原型表
-    */
+
+    // 输出嵌套函数原型表的大小
     n = f->sizep;
     DumpInt(n, D);
-    
-    /*
-    ** [递归输出] 输出每个嵌套函数
-    */
-    for (i = 0; i < n; i++) 
+
+    // 递归输出每个嵌套函数的完整定义
+    for (i = 0; i < n; i++)
     {
         DumpFunction(f->p[i], f->source, D);
     }
@@ -512,40 +491,34 @@ static void DumpConstants(const Proto* f, DumpState* D)
 static void DumpDebug(const Proto* f, DumpState* D)
 {
     int i, n;
-    
-    /*
-    ** [行号信息] 输出指令行号映射
-    ** 剥离模式下输出空数组
-    */
+
+    // 输出指令行号映射信息，剥离模式下输出空数组
     n = (D->strip) ? 0 : f->sizelineinfo;
     DumpVector(f->lineinfo, n, sizeof(int), D);
-    
-    /*
-    ** [局部变量] 输出局部变量调试信息
-    */
+
+    // 输出局部变量调试信息的数量
     n = (D->strip) ? 0 : f->sizelocvars;
     DumpInt(n, D);
-    
-    /*
-    ** [变量详情] 输出每个局部变量的详细信息
-    */
+
+    // 输出每个局部变量的详细调试信息
     for (i = 0; i < n; i++)
     {
-        DumpString(f->locvars[i].varname, D);   /* 变量名 */
-        DumpInt(f->locvars[i].startpc, D);      /* 作用域开始 */
-        DumpInt(f->locvars[i].endpc, D);        /* 作用域结束 */
+        // 输出变量名称
+        DumpString(f->locvars[i].varname, D);
+
+        // 输出变量作用域开始位置
+        DumpInt(f->locvars[i].startpc, D);
+
+        // 输出变量作用域结束位置
+        DumpInt(f->locvars[i].endpc, D);
     }
-    
-    /*
-    ** [Upvalue名称] 输出upvalue调试信息
-    */
+
+    // 输出upvalue调试信息的数量
     n = (D->strip) ? 0 : f->sizeupvalues;
     DumpInt(n, D);
-    
-    /*
-    ** [名称输出] 输出每个upvalue的名称
-    */
-    for (i = 0; i < n; i++) 
+
+    // 输出每个upvalue的名称信息
+    for (i = 0; i < n; i++)
     {
         DumpString(f->upvalues[i], D);
     }
@@ -595,28 +568,35 @@ static void DumpDebug(const Proto* f, DumpState* D)
 */
 static void DumpFunction(const Proto* f, const TString* p, DumpState* D)
 {
-    /*
-    ** [源文件名] 输出源文件名（带优化）
-    ** 如果与父函数相同或剥离模式，输出NULL
-    */
+    // 输出源文件名（优化处理：如果与父函数相同或剥离模式则输出NULL）
     DumpString((f->source == p || D->strip) ? NULL : f->source, D);
-    
-    /*
-    ** [基本属性] 输出函数的基本属性
-    */
-    DumpInt(f->linedefined, D);           /* 定义开始行 */
-    DumpInt(f->lastlinedefined, D);       /* 定义结束行 */
-    DumpChar(f->nups, D);                 /* upvalue数量 */
-    DumpChar(f->numparams, D);            /* 参数数量 */
-    DumpChar(f->is_vararg, D);            /* 可变参数标志 */
-    DumpChar(f->maxstacksize, D);         /* 最大栈大小 */
-    
-    /*
-    ** [组件输出] 输出函数的各个组成部分
-    */
-    DumpCode(f, D);        /* 指令序列 */
-    DumpConstants(f, D);   /* 常量表 */
-    DumpDebug(f, D);       /* 调试信息 */
+
+    // 输出函数定义的开始行号
+    DumpInt(f->linedefined, D);
+
+    // 输出函数定义的结束行号
+    DumpInt(f->lastlinedefined, D);
+
+    // 输出upvalue的数量
+    DumpChar(f->nups, D);
+
+    // 输出函数参数的数量
+    DumpChar(f->numparams, D);
+
+    // 输出可变参数标志
+    DumpChar(f->is_vararg, D);
+
+    // 输出函数运行时的最大栈大小
+    DumpChar(f->maxstacksize, D);
+
+    // 输出函数的指令序列
+    DumpCode(f, D);
+
+    // 输出函数的常量表
+    DumpConstants(f, D);
+
+    // 输出函数的调试信息
+    DumpDebug(f, D);
 }
 
 
@@ -645,15 +625,11 @@ static void DumpFunction(const Proto* f, const TString* p, DumpState* D)
 static void DumpHeader(DumpState* D)
 {
     char h[LUAC_HEADERSIZE];
-    
-    /*
-    ** [头部生成] 生成标准字节码头部
-    */
+
+    // 生成标准的Lua字节码文件头部
     luaU_header(h);
-    
-    /*
-    ** [头部输出] 输出完整的头部数据
-    */
+
+    // 输出完整的头部数据到字节码流
     DumpBlock(h, LUAC_HEADERSIZE, D);
 }
 
@@ -701,29 +677,20 @@ static void DumpHeader(DumpState* D)
 int luaU_dump(lua_State* L, const Proto* f, lua_Writer w, void* data, int strip)
 {
     DumpState D;
-    
-    /*
-    ** [状态初始化] 设置序列化状态
-    */
-    D.L = L;                 /* 关联Lua状态机 */
-    D.writer = w;            /* 设置输出回调函数 */
-    D.data = data;           /* 保存用户数据 */
-    D.strip = strip;         /* 设置调试信息剥离标志 */
-    D.status = 0;            /* 初始状态为成功 */
-    
-    /*
-    ** [头部输出] 输出字节码文件头
-    */
+
+    // 初始化序列化状态结构
+    D.L = L;                 // 关联Lua状态机指针
+    D.writer = w;            // 设置输出回调函数
+    D.data = data;           // 保存用户提供的数据指针
+    D.strip = strip;         // 设置调试信息剥离标志
+    D.status = 0;            // 初始状态设为成功（无错误）
+
+    // 输出字节码文件的标准头部
     DumpHeader(&D);
-    
-    /*
-    ** [函数输出] 输出主函数原型
-    ** 传入NULL作为父函数源文件名
-    */
+
+    // 输出主函数原型（传入NULL作为父函数源文件名）
     DumpFunction(f, NULL, &D);
-    
-    /*
-    ** [状态返回] 返回最终的序列化状态
-    */
+
+    // 返回最终的序列化状态（0=成功，非0=错误码）
     return D.status;
 }

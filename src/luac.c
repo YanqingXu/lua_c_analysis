@@ -478,7 +478,8 @@ static int doargs(int argc, char* argv[])
             }
             if (IS("-"))
             {
-                output = NULL;  // 输出到标准输出
+                // 输出到标准输出
+                output = NULL;
             }
         }
         else if (IS("-p"))
@@ -746,8 +747,10 @@ static int writer(lua_State* L, const void* p, size_t size, void* u)
 */
 struct Smain
 {
-    int argc;       // 源文件参数数量
-    char** argv;    // 源文件名数组指针
+    // 源文件参数数量
+    int argc;
+    // 源文件名数组指针
+    char** argv;
 };
 
 /*
@@ -1041,7 +1044,7 @@ int main(int argc, char* argv[])
         fatal(lua_tostring(L, -1));
     }
     
-    // 清理资源并成功退出
+    // 清理虚拟机资源并成功退出程序
     lua_close(L);
     return EXIT_SUCCESS;
 }

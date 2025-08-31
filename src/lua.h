@@ -805,14 +805,22 @@ LUA_API int  (lua_status) (lua_State *L);
 */
 
 // 垃圾回收控制选项常量
-#define LUA_GCSTOP        0    // 停止垃圾回收器
-#define LUA_GCRESTART     1    // 重启垃圾回收器
-#define LUA_GCCOLLECT     2    // 执行完整的垃圾回收周期
-#define LUA_GCCOUNT       3    // 获取当前内存使用量（KB）
-#define LUA_GCCOUNTB      4    // 获取当前内存使用量的余数（字节）
-#define LUA_GCSTEP        5    // 执行增量垃圾回收步骤
-#define LUA_GCSETPAUSE    6    // 设置垃圾回收暂停参数
-#define LUA_GCSETSTEPMUL  7    // 设置垃圾回收步长乘数参数
+// 停止垃圾回收器
+#define LUA_GCSTOP        0
+// 重启垃圾回收器
+#define LUA_GCRESTART     1
+// 执行完整的垃圾回收周期
+#define LUA_GCCOLLECT     2
+// 获取当前内存使用量（KB）
+#define LUA_GCCOUNT       3
+// 获取当前内存使用量的余数（字节）
+#define LUA_GCCOUNTB      4
+// 执行增量垃圾回收步骤
+#define LUA_GCSTEP        5
+// 设置垃圾回收暂停参数
+#define LUA_GCSETPAUSE    6
+// 设置垃圾回收步长乘数参数
+#define LUA_GCSETSTEPMUL  7
 
 // 垃圾回收器控制函数
 // @param L: 状态机指针

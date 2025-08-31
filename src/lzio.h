@@ -30,8 +30,10 @@
 #define lzio_h
 
 // Lua 核心头文件
-#include "lua.h"    // Lua 核心类型和常量定义
-#include "lmem.h"   // Lua 内存管理接口
+// Lua 核心类型和常量定义
+#include "lua.h"
+// Lua 内存管理接口
+#include "lmem.h"
 
 
 /*
@@ -135,9 +137,12 @@ typedef struct Zio ZIO;
 */
 typedef struct Mbuffer
 {
-    char *buffer;      // 缓冲区内存指针
-    size_t n;          // 当前已使用的字节数
-    size_t buffsize;   // 缓冲区总容量（字节数）
+    // 缓冲区内存指针
+    char *buffer;
+    // 当前已使用的字节数
+    size_t n;
+    // 缓冲区总容量（字节数）
+    size_t buffsize;
 } Mbuffer;
 
 /*
@@ -430,11 +435,16 @@ LUAI_FUNC int luaZ_lookahead (ZIO *z);
 */
 struct Zio
 {
-    size_t n;          // 缓冲区中剩余未读字节数
-    const char *p;     // 当前读取位置指针
-    lua_Reader reader; // 数据读取函数指针
-    void* data;        // 传递给读取函数的用户数据
-    lua_State *L;      // 关联的 Lua 状态机（用于内存管理）
+    // 缓冲区中剩余未读字节数
+    size_t n;
+    // 当前读取位置指针
+    const char *p;
+    // 数据读取函数指针
+    lua_Reader reader;
+    // 传递给读取函数的用户数据
+    void* data;
+    // 关联的 Lua 状态机（用于内存管理）
+    lua_State *L;
 };
 
 /*

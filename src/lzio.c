@@ -204,11 +204,16 @@ int luaZ_lookahead(ZIO *z)
 */
 void luaZ_init(lua_State *L, ZIO *z, lua_Reader reader, void *data)
 {
-    z->L = L;                    /* 关联Lua状态机 */
-    z->reader = reader;          /* 设置数据读取函数 */
-    z->data = data;              /* 保存用户数据指针 */
-    z->n = 0;                    /* 缓冲区初始为空 */
-    z->p = NULL;                 /* 缓冲区指针初始为空 */
+    /* 关联Lua状态机 */
+    z->L = L;
+    /* 设置数据读取函数 */
+    z->reader = reader;
+    /* 保存用户数据指针 */
+    z->data = data;
+    /* 缓冲区初始为空 */
+    z->n = 0;
+    /* 缓冲区指针初始为空 */
+    z->p = NULL;
 }
 
 

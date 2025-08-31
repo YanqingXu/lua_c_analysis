@@ -55,8 +55,10 @@
 #define lundump_h
 
 // 核心依赖头文件
-#include "lobject.h"  // Lua 对象系统
-#include "lzio.h"     // Lua 输入输出抽象层
+// Lua 对象系统
+#include "lobject.h"
+// Lua 输入输出抽象层
+#include "lzio.h"
 
 /*
 ** ========================================================================

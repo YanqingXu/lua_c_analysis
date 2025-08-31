@@ -55,18 +55,26 @@
 */
 
 // 系统头文件包含
-#include <ctype.h>    // 字符分类函数
-#include <stdio.h>    // 标准输入输出
+// 字符分类函数
+#include <ctype.h>
+// 标准输入输出
+#include <stdio.h>
 
 // 模块标识定义
-#define luac_c        // 标识为 luac 编译器模块
-#define LUA_CORE      // 标识为 Lua 核心模块
+// 标识为 luac 编译器模块
+#define luac_c
+// 标识为 Lua 核心模块
+#define LUA_CORE
 
 // Lua 核心头文件
-#include "ldebug.h"   // 调试接口
-#include "lobject.h"  // 对象系统
-#include "lopcodes.h" // 操作码定义
-#include "lundump.h"  // 字节码加载
+// 调试接口
+#include "ldebug.h"
+// 对象系统
+#include "lobject.h"
+// 操作码定义
+#include "lopcodes.h"
+// 字节码加载
+#include "lundump.h"
 
 /*
 ** [宏定义] 函数别名和工具宏
