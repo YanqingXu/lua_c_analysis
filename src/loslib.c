@@ -947,17 +947,27 @@ static int os_difftime(lua_State *L)
 */
 static int os_setlocale(lua_State *L)
 {
-    // 本地化类别常量数组
-    static const int cat[] = {
-        LC_ALL, LC_COLLATE, LC_CTYPE,
-        LC_MONETARY, LC_NUMERIC, LC_TIME
+    // 本地化类别常量数组：将字符串名称映射到系统常量
+    static const int cat[] =
+    {
+        LC_ALL,       // 所有本地化类别
+        LC_COLLATE,   // 字符串排序规则
+        LC_CTYPE,     // 字符分类和转换
+        LC_MONETARY,  // 货币格式
+        LC_NUMERIC,   // 数字格式
+        LC_TIME       // 时间和日期格式
     };
 
-    // 本地化类别名称数组
-    static const char *const catnames[] = {
-        "all", "collate", "ctype",
-        "monetary", "numeric", "time",
-        NULL
+    // 本地化类别名称数组：用户可指定的类别名称
+    static const char *const catnames[] =
+    {
+        "all",        // 所有类别
+        "collate",    // 排序规则
+        "ctype",      // 字符类型
+        "monetary",   // 货币格式
+        "numeric",    // 数字格式
+        "time",       // 时间格式
+        NULL          // 数组结束标记
     };
 
     const char *l = luaL_optstring(L, 1, NULL);  // 本地化名称
@@ -1050,17 +1060,28 @@ static int os_exit(lua_State *L)
 */
 static const luaL_Reg syslib[] =
 {
-    {"clock",     os_clock},
-    {"date",      os_date},
-    {"difftime",  os_difftime},
-    {"execute",   os_execute},
-    {"exit",      os_exit},
-    {"getenv",    os_getenv},
-    {"remove",    os_remove},
-    {"rename",    os_rename},
-    {"setlocale", os_setlocale},
-    {"time",      os_time},
-    {"tmpname",   os_tmpname},
+    // 时间处理函数
+    {"clock",     os_clock},      // CPU 时间测量
+    {"date",      os_date},       // 日期格式化和时间表生成
+    {"difftime",  os_difftime},   // 时间差计算
+    {"time",      os_time},       // 时间戳获取和转换
+
+    // 进程控制函数
+    {"execute",   os_execute},    // 系统命令执行
+    {"exit",      os_exit},       // 程序退出
+
+    // 环境访问函数
+    {"getenv",    os_getenv},     // 环境变量获取
+
+    // 文件操作函数
+    {"remove",    os_remove},     // 文件删除
+    {"rename",    os_rename},     // 文件重命名/移动
+    {"tmpname",   os_tmpname},    // 临时文件名生成
+
+    // 本地化函数
+    {"setlocale", os_setlocale},  // 本地化设置
+
+    // 数组结束标记
     {NULL, NULL}
 };
 

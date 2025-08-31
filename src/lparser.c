@@ -70,12 +70,16 @@
 typedef struct BlockCnt {
     // 链表指针：指向外层块
     struct BlockCnt *previous;
+
     // 跳转列表：break语句的跳转目标
     int breaklist;
+
     // 变量计数：外层活跃局部变量数
     lu_byte nactvar;
+
     // 上值标志：是否包含被引用的变量
     lu_byte upval;
+
     // 循环标志：是否为循环结构
     lu_byte isbreakable;
 } BlockCnt;
@@ -111,6 +115,7 @@ static void anchor_token (LexState *ls)
     if (ls->t.token == TK_NAME || ls->t.token == TK_STRING)
     {
         TString *ts = ls->t.seminfo.ts;
+
         // 创建字符串副本
         luaX_newstring(ls, getstr(ts), ts->tsv.len);
     }
@@ -333,8 +338,10 @@ static void init_exp (expdesc *e, expkind k, int i)
 {
     // 初始化跳转链表
     e->f = e->t = NO_JUMP;
+
     // 设置表达式类型
     e->k = k;
+
     // 设置相关信息
     e->u.s.info = i;
 }
@@ -958,21 +965,27 @@ static void open_func (LexState *ls, FuncState *fs)
 }
 
 
-/**
- * [核心] 关闭函数编译，完成函数原型的构建
- * 
- * 功能：完成当前函数的编译过程，包括：
- * 1. 清理所有局部变量
- * 2. 生成最终返回指令
- * 3. 收缩并整理各种数组（代码、行信息、常量等）
- * 4. 验证生成的字节码正确性
- * 5. 恢复到父函数状态
- * 
- * @param ls 词法状态，包含当前函数编译状态
- * 
- * 时间复杂度：O(n)，n为函数中的指令/常量数量
- * 空间优化：收缩所有数组到实际使用大小
- */
+/*
+** [核心] 关闭函数编译，完成函数原型的构建
+**
+** 详细功能说明：
+** 完成当前函数的编译过程，包括清理所有局部变量、生成最终返回指令、
+** 收缩并整理各种数组（代码、行信息、常量等）、验证生成的字节码正确性、
+** 恢复到父函数状态。这是函数编译的最后阶段。
+**
+** 参数说明：
+** @param ls - LexState*：词法状态，包含当前函数编译状态
+**
+** 返回值：无
+**
+** 算法复杂度：O(n) 时间，n为函数中的指令/常量数量
+**
+** 注意事项：
+** - 必须与open_func成对调用
+** - 会收缩所有数组到实际使用大小，优化内存使用
+** - 验证生成的字节码正确性
+** - 恢复词法分析器状态到父函数
+*/
 static void close_func (LexState *ls)
 {
     lua_State *L = ls->L;
@@ -1027,25 +1040,30 @@ static void close_func (LexState *ls)
 }
 
 
-/**
- * [核心] Lua解析器主入口函数
- * 
- * 功能：解析Lua源代码并生成函数原型（Proto）
- * 这是整个语法分析的顶层控制函数，负责：
- * 1. 初始化词法分析器和函数状态
- * 2. 设置主函数为变参函数
- * 3. 驱动整个语法分析过程
- * 4. 验证解析完整性
- * 
- * @param L Lua虚拟机状态
- * @param z 输入流对象
- * @param buff 字符串缓冲区
- * @param name 源文件名称，用于错误报告
- * @return 编译完成的函数原型
- * 
- * 时间复杂度：O(n)，n为源代码长度
- * 核心算法：递归下降语法分析
- */
+/*
+** [核心] Lua解析器主入口函数
+**
+** 详细功能说明：
+** 解析Lua源代码并生成函数原型（Proto）。这是整个语法分析的顶层控制函数，
+** 负责初始化词法分析器和函数状态、设置主函数为变参函数、驱动整个语法分析过程、
+** 验证解析完整性。
+**
+** 参数说明：
+** @param L - lua_State*：Lua虚拟机状态
+** @param z - ZIO*：输入流对象
+** @param buff - Mbuffer*：字符串缓冲区
+** @param name - const char*：源文件名称，用于错误报告
+**
+** 返回值：
+** @return Proto*：编译完成的函数原型
+**
+** 算法复杂度：O(n) 时间，n为源代码长度
+**
+** 注意事项：
+** - 使用递归下降语法分析算法
+** - 主函数总是变参函数
+** - 会验证编译状态的正确性
+*/
 Proto *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff, const char *name)
 {
     struct LexState lexstate;
@@ -1088,9 +1106,9 @@ Proto *luaY_parser (lua_State *L, ZIO *z, Mbuffer *buff, const char *name)
 
 
 
-/*============================================================*/
+// ============================================================
 // 语法规则
-/*============================================================*/
+// ============================================================
 
 
 /*
@@ -1184,28 +1202,74 @@ struct ConsControl {
 };
 
 
+/*
+** [进阶] 解析表构造中的记录字段
+**
+** 详细功能说明：
+** 解析表构造器中的记录字段，支持两种格式：
+** - name = expr：标识符作为键
+** - [expr] = expr：表达式作为键
+** 生成SETTABLE指令将键值对存储到表中。
+**
+** 参数说明：
+** @param ls - LexState*：词法分析器状态
+** @param cc - struct ConsControl*：构造控制结构
+**
+** 返回值：无
+**
+** 算法复杂度：O(1) 时间，O(1) 空间
+**
+** 注意事项：
+** - 支持标识符和表达式两种键格式
+** - 会检查构造器中元素数量限制
+** - 自动管理寄存器分配和释放
+*/
 static void recfield (LexState *ls, struct ConsControl *cc)
 {
-    // 记录字段语法解析
+    // 获取当前函数编译状态
     FuncState *fs = ls->fs;
+
+    // 保存当前寄存器状态，用于后续恢复
     int reg = ls->fs->freereg;
+
+    // 声明键和值的表达式描述符
     expdesc key, val;
     int rkkey;
+
+    // 根据当前标记类型解析键表达式
     if (ls->t.token == TK_NAME)
     {
+        // 处理 name = expr 格式的记录字段
+        // 检查构造器中记录字段数量限制
         luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+
+        // 解析标识符名称作为键
         checkname(ls, &key);
     }
-    else  // 标记为左方括号
+    else
     {
+        // 处理 [expr] = expr 格式的记录字段
+        // 解析方括号内的表达式作为键
         yindex(ls, &key);
     }
+
+    // 增加记录字段计数
     cc->nh++;
+
+    // 期望并消费等号标记
     checknext(ls, '=');
+
+    // 将键表达式转换为寄存器或常量形式
     rkkey = luaK_exp2RK(fs, &key);
+
+    // 解析等号右侧的值表达式
     expr(ls, &val);
+
+    // 生成SETTABLE指令：table[key] = value
+    // 参数：表对象寄存器、键（寄存器或常量）、值（寄存器或常量）
     luaK_codeABC(fs, OP_SETTABLE, cc->t->u.s.info, rkkey, luaK_exp2RK(fs, &val));
-    // 释放寄存器
+
+    // 恢复寄存器状态，释放临时使用的寄存器
     fs->freereg = reg;
 }
 
@@ -1355,46 +1419,97 @@ static void constructor (LexState *ls, expdesc *t)
 
 
 
+/*
+** [进阶] 解析函数参数列表
+**
+** 详细功能说明：
+** 解析函数定义中的参数列表，支持普通参数和可变参数（...）。
+** 为每个参数创建局部变量，设置函数的参数数量和可变参数标志。
+**
+** 参数说明：
+** @param ls - LexState*：词法分析器状态
+**
+** 返回值：无
+**
+** 算法复杂度：O(n) 时间，n为参数数量
+**
+** 注意事项：
+** - 支持普通参数和可变参数（...）
+** - 可变参数必须是最后一个参数
+** - 会为参数保留相应的寄存器
+** - 兼容模式下会创建arg局部变量
+*/
 static void parlist (LexState *ls)
 {
-    // 参数列表语法解析
+    // 获取当前函数编译状态和函数原型
     FuncState *fs = ls->fs;
     Proto *f = fs->f;
+
+    // 初始化参数计数器
     int nparams = 0;
+
+    // 初始化可变参数标志为非可变参数
     f->is_vararg = 0;
+
+    // 检查参数列表是否为空（右括号表示空参数列表）
     if (ls->t.token != ')')
-    {  // 参数列表非空？
+    {
+        // 参数列表非空，开始解析参数
         do
         {
+            // 根据当前标记类型处理不同的参数类型
             switch (ls->t.token)
             {
                 case TK_NAME:
-                {  // 普通参数
+                {
+                    // 处理普通参数：function(param1, param2, ...)
+                    // 创建新的局部变量并递增参数计数
                     new_localvar(ls, str_checkname(ls), nparams++);
                     break;
                 }
+
                 case TK_DOTS:
-                {  // 参数 -> `...'
+                {
+                    // 处理可变参数：function(param1, ...)
+                    // 消费 '...' 标记
                     luaX_next(ls);
+
 #if defined(LUA_COMPAT_VARARG)
-                    // 使用 `arg' 作为默认名称
+                    // 兼容模式：创建隐式的 'arg' 局部变量
+                    // 'arg' 变量包含所有额外的参数
                     new_localvarliteral(ls, "arg", nparams++);
+
+                    // 设置兼容模式的可变参数标志
+                    // VARARG_HASARG: 函数有 'arg' 变量
+                    // VARARG_NEEDSARG: 需要创建 'arg' 表
                     f->is_vararg = VARARG_HASARG | VARARG_NEEDSARG;
 #endif
+
+                    // 设置标准的可变参数标志
+                    // VARARG_ISVARARG: 函数接受可变数量的参数
                     f->is_vararg |= VARARG_ISVARARG;
                     break;
                 }
+
                 default:
                 {
+                    // 语法错误：期望参数名或可变参数标记
                     luaX_syntaxerror(ls, "<name> or " LUA_QL("...") " expected");
                 }
             }
         }
+        // 继续解析下一个参数，直到遇到可变参数或没有更多逗号
         while (!f->is_vararg && testnext(ls, ','));
     }
+
+    // 激活所有解析的参数，使其在函数体中可见
     adjustlocalvars(ls, nparams);
+
+    // 计算函数的正式参数数量
+    // 如果有 'arg' 变量（兼容模式），需要从总数中减去1
     f->numparams = cast_byte(fs->nactvar - (f->is_vararg & VARARG_HASARG));
-    // 为参数保留寄存器
+
+    // 为所有参数（包括可能的 'arg' 变量）保留寄存器
     luaK_reserveregs(fs, fs->nactvar);
 }
 
@@ -1596,26 +1711,38 @@ static void primaryexp (LexState *ls, expdesc *v)
     /* primaryexp ->
           prefixexp { `.' NAME | `[' exp `]' | `:' NAME funcargs | funcargs } */
     FuncState *fs = ls->fs;
+
+    // 解析前缀表达式（变量名、括号表达式等）
     prefixexp(ls, v);
+
+    // 循环处理所有后缀操作，直到遇到非后缀操作符
     for (;;)
     {
         switch (ls->t.token)
         {
             case '.':
-            {  // 字段
+            {
+                // 字段访问：obj.field
+                // 生成GETTABLE指令访问表字段
                 field(ls, v);
                 break;
             }
+
             case '[':
-            {  // 方括号索引
+            {
+                // 数组索引：obj[expr]
+                // 将对象转换为任意寄存器，解析索引表达式
                 expdesc key;
                 luaK_exp2anyreg(fs, v);
                 yindex(ls, &key);
                 luaK_indexed(fs, v, &key);
                 break;
             }
+
             case ':':
-            {  // 冒号方法调用
+            {
+                // 方法调用：obj:method(args)
+                // 等价于obj.method(obj, args)，自动传递self参数
                 expdesc key;
                 luaX_next(ls);
                 checkname(ls, &key);
@@ -1623,13 +1750,19 @@ static void primaryexp (LexState *ls, expdesc *v)
                 funcargs(ls, v);
                 break;
             }
+
             case '(': case TK_STRING: case '{':
-            {  // 函数参数
+            {
+                // 函数调用：func(args) 或 func"string" 或 func{table}
+                // 将函数转换为下一个寄存器，解析参数列表
                 luaK_exp2nextreg(fs, v);
                 funcargs(ls, v);
                 break;
             }
-            default: return;
+
+            default:
+                // 没有更多后缀操作，退出循环
+                return;
         }
     }
 }
@@ -1829,8 +1962,27 @@ static const struct {
 
 
 /*
-** subexpr -> (simpleexp | unop subexpr) { binop subexpr }
-** where `binop' is any binary operator with a priority higher than `limit'
+** [核心] 解析子表达式（运算符优先级解析）
+**
+** 详细功能说明：
+** 使用运算符优先级算法解析表达式，支持一元和二元运算符。
+** 语法规则：subexpr -> (simpleexp | unop subexpr) { binop subexpr }
+** 其中binop是任何优先级高于limit的二元运算符。
+**
+** 参数说明：
+** @param ls - LexState*：词法分析器状态
+** @param v - expdesc*：存储解析结果的表达式描述符
+** @param limit - unsigned int：运算符优先级限制
+**
+** 返回值：
+** @return BinOpr：第一个未处理的二元运算符
+**
+** 算法复杂度：O(n) 时间，n为表达式中运算符数量
+**
+** 注意事项：
+** - 使用递归下降和运算符优先级相结合的算法
+** - 正确处理运算符的左右结合性
+** - 一元运算符优先级固定为8
 */
 static BinOpr subexpr (LexState *ls, expdesc *v, unsigned int limit)
 {
@@ -1963,48 +2115,73 @@ static void check_conflict (LexState *ls, struct LHS_assign *lh, expdesc *v)
 }
 
 
-static void assignment (LexState *ls, struct LHS_assign *lh, int nvars) 
+static void assignment (LexState *ls, struct LHS_assign *lh, int nvars)
 {
     expdesc e;
+
+    // 验证左值表达式的有效性（必须是变量或索引表达式）
     check_condition(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
                         "syntax error");
-    if (testnext(ls, ','))    // 赋值 -> `,' 主表达式 赋值
+
+    // 检查是否为多重赋值（逗号分隔的左值列表）
+    if (testnext(ls, ','))
     {
+        // 多重赋值：a, b, c = expr1, expr2, expr3
         struct LHS_assign nv;
         nv.prev = lh;
+
+        // 解析下一个左值表达式
         primaryexp(ls, &nv.v);
+
+        // 检查局部变量赋值冲突
         if (nv.v.k == VLOCAL)
         {
             check_conflict(ls, lh, &nv.v);
         }
+
+        // 检查赋值变量数量限制，防止栈溢出
         luaY_checklimit(ls->fs, nvars, LUAI_MAXCCALLS - ls->L->nCcalls,
                         "variables in assignment");
+
+        // 递归处理剩余的左值表达式
         assignment(ls, &nv, nvars+1);
     }
-    else    // 赋值 -> `=' 表达式列表1
+    else
     {
+        // 单一赋值或多重赋值的右值处理：= expr1, expr2, expr3
         int nexps;
+
+        // 期望等号
         checknext(ls, '=');
+
+        // 解析右值表达式列表
         nexps = explist1(ls, &e);
+
+        // 处理左值和右值数量不匹配的情况
         if (nexps != nvars)
         {
+            // 调整赋值：多余的右值被丢弃，缺少的右值用nil补充
             adjust_assign(ls, nvars, nexps, &e);
+
             if (nexps > nvars)
             {
-                // 移除多余的值
+                // 移除多余的右值，释放寄存器
                 ls->fs->freereg -= nexps - nvars;
             }
         }
         else
         {
-            // 关闭最后一个表达式
+            // 左值和右值数量完全匹配的优化处理
+            // 关闭最后一个表达式，确保单一返回值
             luaK_setoneret(ls->fs, &e);
             luaK_storevar(ls->fs, &lh->v, &e);
-            // 避免默认处理
+
+            // 直接返回，避免执行默认赋值逻辑
             return;
         }
     }
-    // 默认赋值
+
+    // 默认赋值处理：将调整后的表达式赋值给当前左值
     init_exp(&e, VNONRELOC, ls->fs->freereg-1);
     luaK_storevar(ls->fs, &lh->v, &e);
 }
@@ -2161,66 +2338,84 @@ static void forbody (LexState *ls, int base, int line, int nvars, int isnum)
 
 static void fornum (LexState *ls, TString *varname, int line)
 {
-    // 数值for循环解析
+    // 数值for循环解析：for var = start, limit [, step] do ... end
     FuncState *fs = ls->fs;
     int base = fs->freereg;
 
-    new_localvarliteral(ls, "(for index)", 0);
-    new_localvarliteral(ls, "(for limit)", 1);
-    new_localvarliteral(ls, "(for step)", 2);
+    // 创建for循环的内部控制变量（用户不可见）
+    // 这些变量按特定顺序存储，供FORPREP和FORLOOP指令使用
+    new_localvarliteral(ls, "(for index)", 0);    // 当前索引值
+    new_localvarliteral(ls, "(for limit)", 1);    // 循环上限值
+    new_localvarliteral(ls, "(for step)", 2);     // 步长值
+
+    // 创建用户声明的循环变量
     new_localvar(ls, varname, 3);
+
+    // 期望等号，开始解析初始化表达式
     checknext(ls, '=');
 
-    // 初始值
+    // 解析并生成初始值表达式
     exp1(ls);
     checknext(ls, ',');
 
-    // 限制值
+    // 解析并生成限制值表达式
     exp1(ls);
 
+    // 处理可选的步长参数
     if (testnext(ls, ','))
     {
-        // 可选步长
+        // 用户指定了步长值
         exp1(ls);
     }
     else
     {
-        // 默认步长 = 1
+        // 使用默认步长值1
+        // 生成LOADK指令加载常量1到寄存器
         luaK_codeABx(fs, OP_LOADK, fs->freereg, luaK_numberK(fs, 1));
         luaK_reserveregs(fs, 1);
     }
 
+    // 生成for循环体和相关的跳转指令
     forbody(ls, base, line, 1, 1);
 }
 
 
 static void forlist (LexState *ls, TString *indexname)
 {
-    // 列表for循环解析
+    // 泛型for循环解析：for var1, var2, ... in explist do ... end
     FuncState *fs = ls->fs;
     expdesc e;
     int nvars = 0;
     int line;
     int base = fs->freereg;
 
-    // 创建控制变量
-    new_localvarliteral(ls, "(for generator)", nvars++);
-    new_localvarliteral(ls, "(for state)", nvars++);
-    new_localvarliteral(ls, "(for control)", nvars++);
+    // 创建泛型for循环的内部控制变量（用户不可见）
+    // 这些变量存储迭代器函数、状态和控制变量
+    new_localvarliteral(ls, "(for generator)", nvars++);  // 迭代器函数
+    new_localvarliteral(ls, "(for state)", nvars++);      // 不变状态
+    new_localvarliteral(ls, "(for control)", nvars++);    // 控制变量
 
-    // 创建声明的变量
+    // 创建用户声明的循环变量
+    // 第一个变量已经在调用处解析
     new_localvar(ls, indexname, nvars++);
+
+    // 解析剩余的循环变量（如果有的话）
     while (testnext(ls, ','))
     {
         new_localvar(ls, str_checkname(ls), nvars++);
     }
 
+    // 期望in关键字，开始解析迭代器表达式
     checknext(ls, TK_IN);
     line = ls->linenumber;
+
+    // 解析迭代器表达式列表，调整为3个值（generator, state, control）
     adjust_assign(ls, 3, explist1(ls, &e), &e);
 
-    // 调用生成器的额外空间
+    // 为迭代器函数调用预留额外的栈空间
     luaK_checkstack(fs, 3);
+
+    // 生成泛型for循环体和相关的跳转指令
     forbody(ls, base, line, nvars - 3, 0);
 }
 
@@ -2340,27 +2535,35 @@ static void localfunc (LexState *ls)
 
 static void localstat (LexState *ls)
 {
-    // 局部变量语句解析
+    // 局部变量声明语句解析：local var1, var2, ... [= expr1, expr2, ...]
     int nvars = 0;
     int nexps;
     expdesc e;
 
+    // 解析变量名列表，至少有一个变量
     do
     {
+        // 创建新的局部变量，但暂不激活
         new_localvar(ls, str_checkname(ls), nvars++);
     } while (testnext(ls, ','));
 
+    // 检查是否有初始化表达式
     if (testnext(ls, '='))
     {
+        // 解析初始化表达式列表
         nexps = explist1(ls, &e);
     }
     else
     {
+        // 没有初始化表达式，所有变量初始化为nil
         e.k = VVOID;
         nexps = 0;
     }
 
+    // 调整赋值：处理变量数量和表达式数量不匹配的情况
     adjust_assign(ls, nvars, nexps, &e);
+
+    // 激活所有局部变量，使其在后续代码中可见
     adjustlocalvars(ls, nvars);
 }
 
@@ -2402,21 +2605,24 @@ static void funcstat (LexState *ls, int line)
 
 static void exprstat (LexState *ls)
 {
-    // 语句 -> 函数 | 赋值
+    // 表达式语句解析：函数调用 或 赋值语句
     FuncState *fs = ls->fs;
     struct LHS_assign v;
 
+    // 解析主表达式，可能是函数调用或左值表达式
     primaryexp(ls, &v.v);
 
+    // 根据表达式类型决定处理方式
     if (v.v.k == VCALL)
     {
-        // 语句 -> 函数
-        // 调用语句不使用结果
+        // 函数调用语句：func(args)
+        // 设置调用指令的返回值数量为1（丢弃返回值）
         SETARG_C(getcode(fs, &v.v), 1);
     }
     else
     {
-        // 语句 -> 赋值
+        // 赋值语句：var = expr 或 var1, var2 = expr1, expr2
+        // 初始化赋值链表，当前表达式作为第一个左值
         v.prev = NULL;
         assignment(ls, &v, 1);
     }

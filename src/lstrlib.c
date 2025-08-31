@@ -108,11 +108,19 @@
 ** len = string.len("")          --> 0
 ** len = string.len("你好")      --> 6 (UTF-8编码)
 */
-static int str_len(lua_State *L) 
+static int str_len(lua_State *L)
 {
+    // 声明长度变量
     size_t l;
+
+    // 检查第一个参数是否为字符串，同时获取其长度
+    // luaL_checklstring 会自动处理数字到字符串的转换
     luaL_checklstring(L, 1, &l);
+
+    // 将字符串长度作为整数压入栈顶
     lua_pushinteger(L, l);
+
+    // 返回1个值（字符串长度）
     return 1;
 }
 
@@ -149,15 +157,19 @@ static int str_len(lua_State *L)
 ** posrelat(-2, 5) --> 4  (倒数第二个字符)
 ** posrelat(0, 5)  --> 0  (无效位置)
 */
-static ptrdiff_t posrelat(ptrdiff_t pos, size_t len) 
+static ptrdiff_t posrelat(ptrdiff_t pos, size_t len)
 {
-    // 负数表示从末尾开始计算
-    if (pos < 0) 
+    // 第一阶段：处理负数位置
+    // 负数表示从字符串末尾开始计算位置
+    if (pos < 0)
     {
+        // 转换公式：pos = pos + len + 1
+        // 例如：-1 变成 len，-2 变成 len-1
         pos += (ptrdiff_t)len + 1;
     }
-    
-    // 确保位置有效
+
+    // 第二阶段：边界检查
+    // 确保返回的位置不小于0（无效位置用0表示）
     return (pos >= 0) ? pos : 0;
 }
 
@@ -196,34 +208,41 @@ static ptrdiff_t posrelat(ptrdiff_t pos, size_t len)
 ** sub = string.sub("hello", -3, -1)  --> "llo"
 ** sub = string.sub("hello", 3, 2)    --> ""
 */
-static int str_sub(lua_State *L) 
+static int str_sub(lua_State *L)
 {
+    // 变量声明和初始化
     size_t l;
     const char *s = luaL_checklstring(L, 1, &l);
     ptrdiff_t start = posrelat(luaL_checkinteger(L, 2), l);
     ptrdiff_t end = posrelat(luaL_optinteger(L, 3, -1), l);
-    
-    // 边界检查和调整
-    if (start < 1) 
+
+    // 第一阶段：起始位置边界检查
+    // 确保起始位置不小于1（Lua中位置从1开始）
+    if (start < 1)
     {
         start = 1;
     }
-    
-    if (end > (ptrdiff_t)l) 
+
+    // 第二阶段：结束位置边界检查
+    // 确保结束位置不超过字符串长度
+    if (end > (ptrdiff_t)l)
     {
         end = (ptrdiff_t)l;
     }
-    
-    // 提取子字符串
+
+    // 第三阶段：提取子字符串
     if (start <= end)
     {
+        // 有效范围：创建子字符串
+        // start-1 是因为C数组从0开始，而Lua位置从1开始
         lua_pushlstring(L, s + start - 1, end - start + 1);
     }
-    else 
+    else
     {
+        // 无效范围：返回空字符串
         lua_pushliteral(L, "");
     }
-    
+
     return 1;
 }
 
@@ -267,18 +286,24 @@ static int str_sub(lua_State *L)
 */
 static int str_reverse(lua_State *L)
 {
+    // 变量声明
     size_t l;
     luaL_Buffer b;
     const char *s = luaL_checklstring(L, 1, &l);
 
+    // 第一阶段：初始化字符串缓冲区
     luaL_buffinit(L, &b);
 
-    // 从末尾开始逐字符添加
+    // 第二阶段：从末尾开始逐字符添加到缓冲区
+    // 使用 while(l--) 从最后一个字符开始向前遍历
     while (l--)
     {
+        // 将当前字符添加到缓冲区
+        // l 在递减后指向当前要处理的字符索引
         luaL_addchar(&b, s[l]);
     }
 
+    // 第三阶段：构建最终字符串并压入栈
     luaL_pushresult(&b);
     return 1;
 }
@@ -321,19 +346,24 @@ static int str_reverse(lua_State *L)
 */
 static int str_lower(lua_State *L)
 {
+    // 变量声明
     size_t l;
     size_t i;
     luaL_Buffer b;
     const char *s = luaL_checklstring(L, 1, &l);
 
+    // 第一阶段：初始化字符串缓冲区
     luaL_buffinit(L, &b);
 
-    // 逐字符转换为小写
+    // 第二阶段：逐字符转换为小写
     for (i = 0; i < l; i++)
     {
+        // 使用 uchar 宏确保字符为无符号值，避免符号扩展
+        // tolower 函数根据本地化设置转换大写字母为小写
         luaL_addchar(&b, tolower(uchar(s[i])));
     }
 
+    // 第三阶段：构建最终字符串并压入栈
     luaL_pushresult(&b);
     return 1;
 }
@@ -372,19 +402,24 @@ static int str_lower(lua_State *L)
 */
 static int str_upper(lua_State *L)
 {
+    // 变量声明
     size_t l;
     size_t i;
     luaL_Buffer b;
     const char *s = luaL_checklstring(L, 1, &l);
 
+    // 第一阶段：初始化字符串缓冲区
     luaL_buffinit(L, &b);
 
-    // 逐字符转换为大写
+    // 第二阶段：逐字符转换为大写
     for (i = 0; i < l; i++)
     {
+        // 使用 uchar 宏确保字符为无符号值，避免符号扩展
+        // toupper 函数根据本地化设置转换小写字母为大写
         luaL_addchar(&b, toupper(uchar(s[i])));
     }
 
+    // 第三阶段：构建最终字符串并压入栈
     luaL_pushresult(&b);
     return 1;
 }
@@ -432,19 +467,24 @@ static int str_upper(lua_State *L)
 */
 static int str_rep(lua_State *L)
 {
+    // 变量声明和参数获取
     size_t l;
     luaL_Buffer b;
     const char *s = luaL_checklstring(L, 1, &l);
     int n = luaL_checkint(L, 2);
 
+    // 第一阶段：初始化字符串缓冲区
     luaL_buffinit(L, &b);
 
-    // 重复添加字符串
+    // 第二阶段：重复添加字符串到缓冲区
+    // 使用 while(n-- > 0) 循环，每次将完整字符串添加到缓冲区
     while (n-- > 0)
     {
+        // 使用 luaL_addlstring 高效添加指定长度的字符串
         luaL_addlstring(&b, s, l);
     }
 
+    // 第三阶段：构建最终字符串并压入栈
     luaL_pushresult(&b);
     return 1;
 }
@@ -486,41 +526,49 @@ static int str_rep(lua_State *L)
 */
 static int str_byte(lua_State *L)
 {
+    // 变量声明和参数获取
     size_t l;
     const char *s = luaL_checklstring(L, 1, &l);
     ptrdiff_t posi = posrelat(luaL_optinteger(L, 2, 1), l);
     ptrdiff_t pose = posrelat(luaL_optinteger(L, 3, posi), l);
     int n, i;
 
-    // 边界检查
+    // 第一阶段：起始位置边界检查
     if (posi <= 0)
     {
         posi = 1;
     }
 
+    // 第二阶段：结束位置边界检查
     if ((size_t)pose > l)
     {
         pose = l;
     }
 
+    // 第三阶段：范围有效性检查
     if (posi > pose)
     {
-        return 0;  // 无效范围，返回0个值
+        // 无效范围，返回0个值
+        return 0;
     }
 
+    // 第四阶段：计算要返回的字符数量
     n = (int)(pose - posi + 1);
 
-    // 检查栈空间
-    if (posi + n <= pose)  // 防止整数溢出
+    // 第五阶段：防止整数溢出检查
+    if (posi + n <= pose)
     {
         luaL_error(L, "string slice too long");
     }
 
+    // 第六阶段：检查栈空间是否足够
     luaL_checkstack(L, n, "string slice too long");
 
-    // 推送每个字符的ASCII码
+    // 第七阶段：推送每个字符的ASCII码值
     for (i = 0; i < n; i++)
     {
+        // 使用 uchar 确保字符被正确处理为无符号值
+        // posi + i - 1：转换Lua位置（从1开始）到C数组索引（从0开始）
         lua_pushinteger(L, uchar(s[posi + i - 1]));
     }
 
@@ -562,20 +610,29 @@ static int str_byte(lua_State *L)
 */
 static int str_char(lua_State *L)
 {
-    int n = lua_gettop(L);  // 参数数量
+    // 第一阶段：获取参数数量和初始化
+    // 获取栈上参数的数量
+    int n = lua_gettop(L);
     int i;
     luaL_Buffer b;
 
+    // 初始化字符串缓冲区
     luaL_buffinit(L, &b);
 
-    // 将每个ASCII码转换为字符
+    // 第二阶段：将每个ASCII码转换为字符
     for (i = 1; i <= n; i++)
     {
+        // 获取第i个参数作为整数
         int c = luaL_checkint(L, i);
+
+        // 检查值是否在有效的字节范围内（0-255）
         luaL_argcheck(L, uchar(c) == c, i, "invalid value");
+
+        // 将整数转换为字符并添加到缓冲区
         luaL_addchar(&b, uchar(c));
     }
 
+    // 第三阶段：构建最终字符串并压入栈
     luaL_pushresult(&b);
     return 1;
 }
@@ -631,15 +688,22 @@ static int str_char(lua_State *L)
 */
 typedef struct MatchState
 {
-    const char *src_init;  // 源字符串起始
-    const char *src_end;   // 源字符串结束
-    const char *p_end;     // 模式字符串结束
-    lua_State *L;          // Lua 状态机
-    int level;             // 捕获层级
+    // 源字符串起始
+    const char *src_init;
+    // 源字符串结束
+    const char *src_end;
+    // 模式字符串结束
+    const char *p_end;
+    // Lua 状态机
+    lua_State *L;
+    // 捕获层级
+    int level;
     struct
     {
-        const char *init;  // 捕获起始位置
-        ptrdiff_t len;     // 捕获长度或特殊标记
+        // 捕获起始位置
+        const char *init;
+        // 捕获长度或特殊标记
+        ptrdiff_t len;
     } capture[LUA_MAXCAPTURES];
 } MatchState;
 
@@ -661,13 +725,19 @@ typedef struct MatchState
 
 static int check_capture(MatchState *ms, int l)
 {
-    l -= '1';  // 转换为数组索引
+    // 第一阶段：将字符索引转换为数组索引
+    // Lua中捕获组从'1'开始编号，C数组从0开始
+    l -= '1';
 
+    // 第二阶段：验证捕获组索引的有效性
+    // 索引小于0 或 索引超出当前捕获层级 或 捕获组未完成
     if (l < 0 || l >= ms->level || ms->capture[l].len == CAP_UNFINISHED)
     {
+        // 报告无效的捕获组索引错误
         return luaL_error(ms->L, "invalid capture index");
     }
 
+    // 第三阶段：返回有效的捕获组索引
     return l;
 }
 
@@ -686,16 +756,22 @@ static int check_capture(MatchState *ms, int l)
 */
 static int capture_to_close(MatchState *ms)
 {
+    // 第一阶段：获取当前捕获层级
     int level = ms->level;
 
+    // 第二阶段：从最新的捕获组开始向前查找
+    // 寻找第一个未完成的捕获组
     for (level--; level >= 0; level--)
     {
         if (ms->capture[level].len == CAP_UNFINISHED)
         {
+            // 找到未完成的捕获组，返回其索引
             return level;
         }
     }
 
+    // 第三阶段：未找到未完成的捕获组
+    // 这表示模式中存在不匹配的括号
     return luaL_error(ms->L, "invalid pattern capture");
 }
 
@@ -730,55 +806,71 @@ static int capture_to_close(MatchState *ms)
 */
 static int match_class(int c, int cl)
 {
+    // 第一阶段：声明结果变量
     int res;
 
+    // 第二阶段：根据字符类标识符进行匹配
+    // 使用 tolower 确保大小写不敏感的比较
     switch (tolower(cl))
     {
         case 'a':
+            // 字母字符类
             res = isalpha(c);
             break;
 
         case 'c':
+            // 控制字符类
             res = iscntrl(c);
             break;
 
         case 'd':
+            // 数字字符类
             res = isdigit(c);
             break;
 
         case 'l':
+            // 小写字母字符类
             res = islower(c);
             break;
 
         case 'p':
+            // 标点符号字符类
             res = ispunct(c);
             break;
 
         case 's':
+            // 空白字符类（空格、制表符、换行符等）
             res = isspace(c);
             break;
 
         case 'u':
+            // 大写字母字符类
             res = isupper(c);
             break;
 
         case 'w':
+            // 字母数字字符类（字母或数字）
             res = isalnum(c);
             break;
 
         case 'x':
+            // 十六进制数字字符类
             res = isxdigit(c);
             break;
 
         case 'z':
+            // 零字符（NULL字符）
             res = (c == 0);
             break;
 
         default:
+            // 非预定义字符类，直接字符匹配
             return (cl == c);
     }
 
-    // 大写字符类表示取反
+    // 第三阶段：处理字符类的大小写语义
+    // 小写字符类：正常匹配
+    // 大写字符类：取反匹配（如%D匹配非数字）
     return (islower(cl) ? res : !res);
 }
 
@@ -810,41 +902,59 @@ static int match_class(int c, int cl)
 */
 static int matchbracketclass(int c, const char *p, const char *ec)
 {
-    int sig = 1;  // 匹配标志
+    // 第一阶段：初始化匹配标志
+    // 默认为正向匹配
+    int sig = 1;
 
-    // 检查是否为取反匹配
+    // 第二阶段：检查是否为取反匹配
+    // 如果字符集以 '^' 开头，表示取反匹配
     if (*(p + 1) == '^')
     {
+        // 设置为取反匹配
         sig = 0;
-        p++;  // 跳过 '^'
+        // 跳过 '^' 字符
+        p++;
     }
 
-    // 遍历字符集
+    // 第三阶段：遍历字符集中的所有元素
     while (++p < ec)
     {
+        // 第四阶段：处理转义字符类
         if (*p == L_ESC)
         {
+            // 跳过转义字符
             p++;
+
+            // 检查字符是否匹配预定义字符类（如%d, %a等）
             if (match_class(c, uchar(*p)))
             {
+                // 找到匹配，返回相应的匹配结果
                 return sig;
             }
         }
+        // 第五阶段：处理字符范围（如a-z）
         else if ((*(p + 1) == '-') && (p + 2 < ec))
         {
-            // 字符范围匹配
+            // 跳过 '-' 和范围结束字符
             p += 2;
+
+            // 检查字符是否在指定范围内
             if (uchar(*(p - 2)) <= c && c <= uchar(*p))
             {
+                // 字符在范围内，返回匹配结果
                 return sig;
             }
         }
+        // 第六阶段：处理单个字符匹配
         else if (uchar(*p) == c)
         {
+            // 找到直接字符匹配
             return sig;
         }
     }
 
+    // 第七阶段：未找到匹配
+    // 返回与匹配标志相反的结果
     return !sig;
 }
 
@@ -875,43 +985,60 @@ static int matchbracketclass(int c, const char *p, const char *ec)
 */
 static int str_find_aux(lua_State *L, int find)
 {
+    // 第一阶段：变量声明和参数获取
     size_t l1, l2;
+    // 源字符串
     const char *s = luaL_checklstring(L, 1, &l1);
+    // 模式字符串
     const char *p = luaL_checklstring(L, 2, &l2);
+    // 起始位置（转为C索引）
     ptrdiff_t init = posrelat(luaL_optinteger(L, 3, 1), l1) - 1;
 
+    // 第二阶段：起始位置边界检查和调整
+    // 确保搜索起始位置在有效范围内
     if (init < 0)
     {
+        // 起始位置小于0，调整为字符串开头
         init = 0;
     }
     else if ((size_t)(init) > l1)
     {
+        // 起始位置超过字符串长度，调整为字符串末尾
         init = (ptrdiff_t)l1;
     }
 
-    // 简化的字符串搜索
-    if (find && (lua_toboolean(L, 4) ||  // 明确的纯文本搜索
-                 strpbrk(p, SPECIALS) == NULL))
+    // 第三阶段：搜索策略选择
+    // 根据find标志和模式特征选择搜索算法
+    // 第4个参数明确要求纯文本搜索 或 模式中不包含特殊字符
+    if (find && (lua_toboolean(L, 4) || strpbrk(p, SPECIALS) == NULL))
     {
-        // 纯文本搜索
+        // 第四阶段：纯文本搜索路径
+        // 使用高效的内存搜索算法进行纯文本匹配
         const char *s2 = lmemfind(s + init, l1 - init, p, l2);
 
         if (s2)
         {
+            // 找到匹配：返回起始位置和结束位置（Lua位置从1开始）
+            // 匹配起始位置
             lua_pushinteger(L, s2 - s + 1);
+            // 匹配结束位置
             lua_pushinteger(L, s2 - s + l2);
+            // 返回两个值
             return 2;
         }
     }
     else
     {
-        // 这里应该是完整的模式匹配实现
-        // 为了简化，我们只返回 nil
+        // 第五阶段：模式匹配路径（简化实现）
+        // 注意：这是一个简化版本，完整实现需要复杂的模式匹配引擎
+        // 在实际的Lua实现中，这里会调用完整的模式匹配算法
         lua_pushnil(L);
         return 1;
     }
 
-    lua_pushnil(L);  // 未找到
+    // 第六阶段：未找到匹配
+    // 无论是纯文本搜索还是模式匹配都未找到结果
+    lua_pushnil(L);
     return 1;
 }
 
@@ -932,6 +1059,8 @@ static int str_find_aux(lua_State *L, int find)
 */
 static int str_find(lua_State *L)
 {
+    // 调用通用搜索函数，find=1 表示返回位置信息
+    // 这是一个简单的包装函数，将具体工作委托给 str_find_aux
     return str_find_aux(L, 1);
 }
 
@@ -952,6 +1081,8 @@ static int str_find(lua_State *L)
 */
 static int str_match(lua_State *L)
 {
+    // 调用通用搜索函数，find=0 表示返回捕获内容而非位置
+    // 这是一个简单的包装函数，将具体工作委托给 str_find_aux
     return str_find_aux(L, 0);
 }
 
@@ -984,68 +1115,99 @@ static int str_match(lua_State *L)
 */
 static int str_format(lua_State *L)
 {
+    // 第一阶段：变量声明和初始化
+    // 获取参数总数
     int top = lua_gettop(L);
+    // 当前处理的参数索引（从格式字符串开始）
     int arg = 1;
+    // 格式字符串长度
     size_t sfl;
+    // 格式字符串
     const char *strfrmt = luaL_checklstring(L, arg, &sfl);
+    // 格式字符串结束位置
     const char *strfrmt_end = strfrmt + sfl;
+    // 输出缓冲区
     luaL_Buffer b;
 
+    // 第二阶段：初始化输出缓冲区
     luaL_buffinit(L, &b);
 
+    // 第三阶段：逐字符解析格式字符串
     while (strfrmt < strfrmt_end)
     {
-        if (*strfrmt != L_ESC)
+        // 第四阶段：处理普通字符
+        if (*strfrmt != L_ESC)  // L_ESC 是 '%' 字符
         {
+            // 普通字符直接添加到输出缓冲区
             luaL_addchar(&b, *strfrmt++);
         }
+        // 第五阶段：处理转义的 % 字符
         else if (*++strfrmt == L_ESC)
         {
-            luaL_addchar(&b, *strfrmt++);  // %%
+            // %% 表示字面量 %，添加一个 % 到输出
+            luaL_addchar(&b, *strfrmt++);
         }
+        // 第六阶段：处理格式说明符
         else
         {
-            // 简化的格式处理
-            char form[6];  // 格式缓冲区
-            char buff[512]; // 输出缓冲区
+            // 声明格式处理所需的缓冲区
+            // 存储C格式字符串（如"%d"）
+            char form[6];
+            // 存储格式化后的结果
+            char buff[512];
 
+            // 第七阶段：参数数量检查
             if (++arg > top)
             {
+                // 格式说明符多于提供的参数，报错
                 luaL_argerror(L, arg, "no value");
             }
 
-            // 构建格式字符串
+            // 第八阶段：构建C格式字符串
+            // 将Lua格式说明符转换为C的sprintf格式
+            // 格式字符串以%开头
             form[0] = '%';
+            // 复制格式字符（如'd', 's'等）
             form[1] = *strfrmt;
+            // 字符串终止符
             form[2] = '\0';
 
+            // 第九阶段：根据格式类型进行相应处理
             switch (*strfrmt++)
             {
                 case 'c':
                 {
+                    // 字符格式：将数字转换为字符
                     sprintf(buff, form, (int)luaL_checknumber(L, arg));
                     break;
                 }
                 case 'd':
                 {
+                    // 整数格式：将Lua数字转换为整数并格式化
                     sprintf(buff, form, (int)luaL_checknumber(L, arg));
                     break;
                 }
                 case 'f':
                 {
+                    // 浮点数格式：将Lua数字转换为双精度浮点数并格式化
                     sprintf(buff, form, (double)luaL_checknumber(L, arg));
                     break;
                 }
                 case 's':
                 {
+                    // 字符串格式处理
                     size_t l;
                     const char *s = luaL_checklstring(L, arg, &l);
+
+                    // 第十阶段：字符串长度优化处理
                     if (l >= 100)
                     {
+                        // 长字符串直接添加，避免sprintf的开销
                         luaL_addvalue(&b);
                     }
                     else
                     {
+                        // 短字符串通过sprintf处理（支持格式化选项）
                         sprintf(buff, form, s);
                         luaL_addstring(&b, buff);
                     }
@@ -1053,14 +1215,18 @@ static int str_format(lua_State *L)
                 }
                 default:
                 {
+                    // 不支持的格式说明符：报告无效的格式选项错误
                     return luaL_error(L, "invalid option " LUA_QL("%%%c") " to " LUA_QL("format"), *(strfrmt - 1));
                 }
             }
 
+            // 第十一阶段：将格式化结果添加到输出缓冲区
+            // 注意：字符串格式的长字符串已经在上面直接添加了
             luaL_addstring(&b, buff);
         }
     }
 
+    // 第十二阶段：构建最终结果并返回
     luaL_pushresult(&b);
     return 1;
 }
@@ -1127,14 +1293,25 @@ static const luaL_Reg strlib[] =
 */
 static void createmetatable(lua_State *L)
 {
-    // 获取字符串类型的元表
-    lua_createtable(L, 0, 1);  // 创建新表作为元表
-    lua_pushvalue(L, -2);      // 复制字符串库表
-    lua_setfield(L, -2, "__index");  // 设置 __index 元方法
-    lua_setmetatable(L, -2);   // 设置为字符串库的元表
+    // 第一阶段：创建字符串类型的元表
+    // 创建一个新表作为字符串类型的元表，预分配1个哈希槽
+    lua_createtable(L, 0, 1);
 
-    // 将字符串库表也设置为字符串类型的元表
-    lua_pop(L, 1);  // 移除字符串库表的副本
+    // 第二阶段：设置 __index 元方法
+    // 复制栈上的字符串库表（位于-2位置）
+    lua_pushvalue(L, -2);
+
+    // 将字符串库表设置为元表的 __index 字段
+    // 这样字符串值就可以访问字符串库中的所有函数
+    lua_setfield(L, -2, "__index");
+
+    // 第三阶段：将元表设置给字符串类型
+    // 这个操作使得所有字符串值都能使用面向对象语法
+    lua_setmetatable(L, -2);
+
+    // 第四阶段：清理栈
+    // 移除字符串库表的副本，保持栈的整洁
+    lua_pop(L, 1);
 }
 
 /*
@@ -1200,13 +1377,16 @@ static void createmetatable(lua_State *L)
 */
 LUALIB_API int luaopen_string(lua_State *L)
 {
-    // 注册字符串库函数
+    // 第一阶段：注册字符串库函数
+    // 创建名为 "string" 的全局表，并注册所有字符串操作函数
     luaL_register(L, LUA_STRLIBNAME, strlib);
 
-    // 创建字符串元表，支持面向对象语法
+    // 第二阶段：创建字符串元表
+    // 设置字符串类型的元表，使字符串值支持面向对象语法调用
     createmetatable(L);
 
-    // 返回 string 库表
+    // 第三阶段：返回字符串库表
+    // 库初始化函数必须返回库表，供 require 函数使用
     return 1;
 }
 
@@ -1233,36 +1413,48 @@ LUALIB_API int luaopen_string(lua_State *L)
 LUALIB_API const char *lmemfind(const char *s1, size_t l1,
                                 const char *s2, size_t l2)
 {
+    // 第一阶段：特殊情况处理
     if (l2 == 0)
     {
-        return s1;  // 空模式匹配任何位置
+        // 空模式匹配任何位置，返回源串起始位置
+        return s1;
     }
     else if (l2 > l1)
     {
-        return NULL;  // 模式比源串长，不可能匹配
+        // 模式比源串长，不可能匹配，直接返回NULL
+        return NULL;
     }
     else
     {
-        const char *init;  // 搜索起始位置
-        l2--;  // 减1用于后续比较
-        l1 = l1 - l2;  // 调整搜索范围
+        // 第二阶段：初始化搜索变量
+        const char *init;
+        // 减1是因为第一个字符已经通过memchr找到
+        l2--;
+        // 调整搜索范围，避免越界
+        l1 = l1 - l2;
 
-        // 简单的暴力搜索算法
+        // 第三阶段：执行搜索算法
+        // 使用memchr快速定位第一个字符，然后比较剩余部分
         while (l1 > 0 && (init = (const char *)memchr(s1, *s2, l1)) != NULL)
         {
-            init++;   // 跳过找到的字符
+            // 移动到找到字符的下一个位置
+            init++;
 
+            // 比较剩余的字符是否匹配
             if (memcmp(init, s2 + 1, l2) == 0)
             {
-                return init - 1;  // 找到匹配
+                // 找到完整匹配，返回匹配起始位置
+                return init - 1;
             }
             else
             {
+                // 未匹配，调整搜索范围继续查找
                 l1 -= init - s1;
                 s1 = init;
             }
         }
 
-        return NULL;  // 未找到
+        // 第四阶段：未找到匹配
+        return NULL;
     }
 }

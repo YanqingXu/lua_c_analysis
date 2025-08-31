@@ -738,7 +738,486 @@ static int luaB_rawget (lua_State *L)
 - **扩展挑战**：为有经验的开发者提供进阶挑战
 - **社区讨论**：引导读者参与相关技术讨论
 
-### 8. 代码质量保证措施
+### 8. 函数内部注释密度规范
+
+#### 8.1 注释密度基本要求
+
+##### 核心原则
+本项目对函数内部注释密度有严格要求，确保代码的可读性和教学价值：
+
+- **重要语句覆盖**：所有重要语句和复杂逻辑块必须有解释性注释
+- **注释质量标准**：注释应解释代码目的和逻辑，而非仅重复代码内容
+- **核心算法重点**：语法分析、表达式处理等核心算法，每个关键步骤都需要详细的中文注释
+- **密度量化标准**：平均每3-5行重要逻辑代码应有至少1行解释性注释
+
+##### 注释密度分级标准
+
+**高密度注释函数（要求90%以上语句有注释）**：
+- 核心语法分析函数（如 `expr`、`statement`、`chunk`）
+- 虚拟机执行函数（如 `luaV_execute`、`luaD_call`）
+- 内存管理函数（如 `luaC_step`、`luaM_realloc`）
+- 复杂算法实现（如哈希表操作、字符串匹配）
+
+**中密度注释函数（要求70%以上重要语句有注释）**：
+- 辅助工具函数
+- 数据结构操作函数
+- 类型转换和检查函数
+
+**标准密度注释函数（要求50%以上关键语句有注释）**：
+- 简单的getter/setter函数
+- 基础的数学运算函数
+- 标准的初始化/清理函数
+
+#### 8.2 注释内容质量要求
+
+##### 解释性注释标准
+```c
+// ✅ 优秀注释示例 - 解释目的和逻辑
+// 检查栈空间是否足够容纳新的局部变量
+// 如果空间不足，会自动扩展栈大小
+luaD_checkstack(L, 1);
+
+// 将新创建的表压入栈顶，成为当前操作的目标
+// 这个表将用于存储解析出的键值对
+sethvalue(L, L->top++, t);
+
+// ❌ 低质量注释示例 - 仅重复代码内容
+// 调用 luaD_checkstack 函数
+luaD_checkstack(L, 1);
+
+// 设置 hvalue 并递增 top
+sethvalue(L, L->top++, t);
+```
+
+##### 复杂逻辑注释要求
+对于复杂的逻辑块，必须提供分步骤的详细说明：
+
+```c
+// ✅ 复杂逻辑的标准注释格式
+// 表构造器解析的三阶段处理：
+// 1. 解析键表达式（支持标识符和表达式两种格式）
+if (ls->t.token == TK_NAME)
+{
+    // 处理 name = expr 格式：标识符作为键
+    // 检查构造器中记录字段数量限制，防止溢出
+    luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+
+    // 解析标识符名称并创建字符串常量
+    checkname(ls, &key);
+}
+else
+{
+    // 处理 [expr] = expr 格式：表达式作为键
+    // 解析方括号内的任意表达式作为动态键
+    yindex(ls, &key);
+}
+
+// 2. 解析等号和值表达式
+cc->nh++;  // 增加记录字段计数
+checknext(ls, '=');  // 期望并消费等号标记
+
+// 3. 生成字节码指令
+// 将键和值都转换为寄存器或常量形式，然后生成SETTABLE指令
+rkkey = luaK_exp2RK(fs, &key);
+expr(ls, &val);
+luaK_codeABC(fs, OP_SETTABLE, cc->t->u.s.info, rkkey, luaK_exp2RK(fs, &val));
+```
+
+#### 8.3 核心算法注释特殊要求
+
+##### 语法分析函数注释标准
+语法分析器的核心函数需要特别详细的注释：
+
+```c
+// ✅ 语法分析函数的标准注释密度
+static void primaryexp (LexState *ls, expdesc *v)
+{
+    // 解析前缀表达式（变量名、括号表达式等）
+    prefixexp(ls, v);
+
+    // 循环处理所有后缀操作，直到遇到非后缀操作符
+    for (;;)
+    {
+        switch (ls->t.token)
+        {
+            case '.':
+            {
+                // 字段访问：obj.field
+                // 生成GETTABLE指令访问表字段
+                field(ls, v);
+                break;
+            }
+
+            case '[':
+            {
+                // 数组索引：obj[expr]
+                // 将对象转换为任意寄存器，解析索引表达式
+                expdesc key;
+                luaK_exp2anyreg(fs, v);
+                yindex(ls, &key);
+                luaK_indexed(fs, v, &key);
+                break;
+            }
+
+            // ... 每个case都有详细的功能说明
+        }
+    }
+}
+```
+
+##### 虚拟机执行函数注释标准
+虚拟机执行相关函数需要解释每个操作的语义：
+
+```c
+// ✅ 虚拟机函数的标准注释密度
+case OP_GETTABLE:
+{
+    // 获取指令的三个操作数：目标寄存器、表寄存器、键
+    int b = GETARG_B(i);  // 表对象所在的寄存器
+    int c = GETARG_C(i);  // 键值（寄存器或常量）
+
+    // 将键值转换为TValue指针，支持寄存器和常量两种形式
+    StkId rb = RB(b);     // 获取表对象
+    TValue *rc = RKC(c);  // 获取键值（可能是寄存器或常量）
+
+    // 执行表访问操作，结果存储在目标寄存器ra中
+    // 如果表有__index元方法，会自动调用元方法
+    luaV_gettable(L, rb, rc, ra);
+
+    // 更新程序计数器，继续执行下一条指令
+    base = L->base;
+    continue;
+}
+```
+
+#### 8.4 注释密度检查标准
+
+##### 量化检查方法
+- **语句计数**：统计函数中的有效代码语句数量（不包括空行和注释）
+- **注释计数**：统计解释性注释的数量（不包括分隔注释）
+- **密度计算**：注释行数 / 有效代码行数 ≥ 目标密度比例
+
+##### 违规示例识别
+```c
+// ❌ 注释密度不足的违规示例
+static void recfield (LexState *ls, struct ConsControl *cc)
+{
+    FuncState *fs = ls->fs;
+    int reg = ls->fs->freereg;
+    expdesc key, val;
+    int rkkey;
+    if (ls->t.token == TK_NAME) {
+        luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+        checkname(ls, &key);
+    }
+    else {
+        yindex(ls, &key);
+    }
+    cc->nh++;
+    checknext(ls, '=');
+    rkkey = luaK_exp2RK(fs, &key);
+    expr(ls, &val);
+    luaK_codeABC(fs, OP_SETTABLE, cc->t->u.s.info, rkkey, luaK_exp2RK(fs, &val));
+    fs->freereg = reg;
+}
+// 问题：15行代码只有0行解释性注释，密度为0%，严重不符合要求
+```
+
+### 9. 代码逻辑分组和空行分隔规范
+
+#### 9.1 逻辑分组基本原则
+
+##### 强制分组要求
+本项目要求所有函数内部必须通过空行进行逻辑分组，提高代码可读性：
+
+- **功能模块分离**：不同功能模块之间必须用空行分隔
+- **阶段性分离**：变量声明区域与逻辑执行区域之间应有空行分隔
+- **复杂函数分段**：复杂函数内部应通过空行将逻辑分解为易读的段落
+- **错误处理分离**：错误处理代码与正常逻辑之间应有空行分隔
+
+##### 分组层次结构
+- **第一层分组**：主要功能阶段之间的分隔（如初始化、处理、清理）
+- **第二层分组**：同一阶段内不同子功能之间的分隔
+- **第三层分组**：复杂逻辑块内部的步骤分隔
+
+#### 9.2 具体分组规则
+
+##### 变量声明与逻辑执行分离
+```c
+// ✅ 正确的变量声明分组
+static void parlist (LexState *ls)
+{
+    // 变量声明区域
+    FuncState *fs = ls->fs;
+    Proto *f = fs->f;
+    int nparams = 0;
+
+    // 初始化区域
+    f->is_vararg = 0;
+
+    // 主要逻辑区域
+    if (ls->t.token != ')')
+    {
+        // 参数解析逻辑...
+    }
+
+    // 最终处理区域
+    adjustlocalvars(ls, nparams);
+    f->numparams = cast_byte(fs->nactvar - (f->is_vararg & VARARG_HASARG));
+    luaK_reserveregs(fs, fs->nactvar);
+}
+```
+
+##### 条件分支内部分组
+```c
+// ✅ 条件分支的正确分组
+if (ls->t.token == TK_NAME)
+{
+    // 参数验证阶段
+    luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+
+    // 名称解析阶段
+    checkname(ls, &key);
+}
+else
+{
+    // 表达式解析阶段
+    yindex(ls, &key);
+}
+
+// 后续处理阶段
+cc->nh++;
+checknext(ls, '=');
+```
+
+##### 循环内部分组
+```c
+// ✅ 循环内部的正确分组
+for (;;)
+{
+    // 标记类型检查
+    switch (ls->t.token)
+    {
+        case '.':
+        {
+            // 字段访问处理
+            field(ls, v);
+            break;
+        }
+
+        case '[':
+        {
+            // 索引访问处理
+            expdesc key;
+            luaK_exp2anyreg(fs, v);
+
+            // 索引解析和代码生成
+            yindex(ls, &key);
+            luaK_indexed(fs, v, &key);
+            break;
+        }
+
+        default:
+            // 退出循环
+            return;
+    }
+}
+```
+
+#### 9.3 错误处理代码分组
+
+##### 错误检查与正常逻辑分离
+```c
+// ✅ 错误处理的正确分组
+static int luaB_rawget (LexState *ls)
+{
+    // 参数验证阶段
+    luaL_checktype(L, 1, LUA_TTABLE);
+    luaL_checkany(L, 2);
+
+    // 栈状态调整
+    lua_settop(L, 2);
+
+    // 主要功能执行
+    lua_rawget(L, 1);
+
+    // 返回结果
+    return 1;
+}
+```
+
+##### 复杂错误处理分组
+```c
+// ✅ 复杂错误处理的分组示例
+static void complex_operation(LexState *ls)
+{
+    // 前置条件检查
+    if (!validate_preconditions(ls))
+    {
+        luaX_syntaxerror(ls, "invalid preconditions");
+        return;
+    }
+
+    // 资源分配阶段
+    Resource *res = allocate_resource();
+    if (res == NULL)
+    {
+        luaX_syntaxerror(ls, "out of memory");
+        return;
+    }
+
+    // 主要操作执行
+    int result = perform_operation(ls, res);
+
+    // 错误处理和资源清理
+    if (result != SUCCESS)
+    {
+        cleanup_resource(res);
+        luaX_syntaxerror(ls, "operation failed");
+        return;
+    }
+
+    // 正常完成处理
+    finalize_operation(res);
+}
+```
+
+#### 9.4 空行使用原则和示例
+
+##### 空行数量标准
+- **主要阶段分隔**：使用1个空行
+- **功能模块分隔**：使用1个空行
+- **复杂逻辑块分隔**：使用1个空行
+- **避免过度分隔**：不使用2个或更多连续空行
+
+##### 标准分组示例
+```c
+// ✅ 完整的分组示例
+static void assignment (LexState *ls, struct LHS_assign *lh, int nvars)
+{
+    expdesc e;
+
+    // 左值表达式验证阶段
+    check_condition(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
+                        "syntax error");
+
+    // 多重赋值检查和处理
+    if (testnext(ls, ','))
+    {
+        // 递归处理左值列表
+        struct LHS_assign nv;
+        nv.prev = lh;
+        primaryexp(ls, &nv.v);
+
+        // 冲突检查
+        if (nv.v.k == VLOCAL)
+        {
+            check_conflict(ls, lh, &nv.v);
+        }
+
+        // 数量限制检查
+        luaY_checklimit(ls->fs, nvars, LUAI_MAXCCALLS - ls->L->nCcalls,
+                        "variables in assignment");
+
+        // 递归调用处理剩余变量
+        assignment(ls, &nv, nvars+1);
+    }
+    else
+    {
+        // 单一赋值处理
+        int nexps;
+        checknext(ls, '=');
+
+        // 右值表达式解析
+        nexps = explist1(ls, &e);
+
+        // 数量匹配处理
+        if (nexps != nvars)
+        {
+            adjust_assign(ls, nvars, nexps, &e);
+            if (nexps > nvars)
+            {
+                ls->fs->freereg -= nexps - nvars;
+            }
+        }
+        else
+        {
+            // 优化处理：数量完全匹配
+            luaK_setoneret(ls->fs, &e);
+            luaK_storevar(ls->fs, &lh->v, &e);
+            return;
+        }
+    }
+
+    // 默认赋值处理
+    init_exp(&e, VNONRELOC, ls->fs->freereg-1);
+    luaK_storevar(ls->fs, &lh->v, &e);
+}
+```
+
+#### 9.5 违规示例和修正对比
+
+##### 违规示例（缺少逻辑分组）
+```c
+// ❌ 违规示例：缺少空行分隔，逻辑混乱
+static void bad_example(LexState *ls)
+{
+    FuncState *fs = ls->fs;
+    int reg = ls->fs->freereg;
+    expdesc key, val;
+    int rkkey;
+    if (ls->t.token == TK_NAME) {
+        luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+        checkname(ls, &key);
+    } else {
+        yindex(ls, &key);
+    }
+    cc->nh++;
+    checknext(ls, '=');
+    rkkey = luaK_exp2RK(fs, &key);
+    expr(ls, &val);
+    luaK_codeABC(fs, OP_SETTABLE, cc->t->u.s.info, rkkey, luaK_exp2RK(fs, &val));
+    fs->freereg = reg;
+}
+```
+
+##### 修正示例（正确的逻辑分组）
+```c
+// ✅ 修正示例：清晰的逻辑分组
+static void good_example(LexState *ls)
+{
+    // 变量声明和初始化
+    FuncState *fs = ls->fs;
+    int reg = ls->fs->freereg;
+    expdesc key, val;
+    int rkkey;
+
+    // 键表达式解析阶段
+    if (ls->t.token == TK_NAME)
+    {
+        luaY_checklimit(fs, cc->nh, MAX_INT, "items in a constructor");
+        checkname(ls, &key);
+    }
+    else
+    {
+        yindex(ls, &key);
+    }
+
+    // 赋值操作处理阶段
+    cc->nh++;
+    checknext(ls, '=');
+
+    // 代码生成阶段
+    rkkey = luaK_exp2RK(fs, &key);
+    expr(ls, &val);
+    luaK_codeABC(fs, OP_SETTABLE, cc->t->u.s.info, rkkey, luaK_exp2RK(fs, &val));
+
+    // 资源清理阶段
+    fs->freereg = reg;
+}
+```
+
+### 10. 代码质量保证措施
 
 #### 一致性检查
 - **命名规范**：确保变量和函数命名的一致性
@@ -751,6 +1230,12 @@ static int luaB_rawget (lua_State *L)
 - **代码对照**：定期与原始代码进行同步检查
 - **专家评审**：邀请 Lua 专家审查注释质量
 - **社区反馈**：收集和处理社区的改进建议
+
+#### 注释密度和分组检查
+- **自动化检查**：开发工具自动检查注释密度是否达标
+- **分组规范验证**：检查空行分隔是否符合逻辑分组要求
+- **质量评分**：为每个文件的注释质量和分组规范进行评分
+- **持续改进**：基于检查结果持续改进代码质量
 
 ## 使用目的
 
