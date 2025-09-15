@@ -1,1154 +1,1153 @@
-/*
-** [核心] Lua 标准操作系统库实现
-**
-** 功能概述：
-** 本模块实现了 Lua 的标准操作系统库，提供与操作系统交互的基本功能。
-** 包含文件操作、进程控制、时间处理、环境变量访问、本地化设置等核心功能。
-**
-** 主要功能模块：
-** - 文件系统操作：文件删除、重命名、临时文件生成
-** - 进程控制：命令执行、程序退出
-** - 时间和日期：时间获取、格式化、计算、时区处理
-** - 环境变量：系统环境变量的读取和访问
-** - 本地化：区域设置和字符集处理
-** - 系统信息：CPU 时间测量、系统状态查询
-**
-** 平台兼容性：
-** - Unix/Linux：基于 POSIX 标准系统调用
-** - Windows：兼容 Win32 API 和 MSVCRT
-** - macOS：支持 Darwin 系统特性
-** - 嵌入式系统：提供最小功能集合
-**
-** 设计特点：
-** - 跨平台兼容：统一的接口，平台特定的实现
-** - 错误处理：详细的错误信息和异常处理
-** - 时区支持：本地时间和 UTC 时间的转换
-** - 本地化：多语言和字符集支持
-** - 性能优化：最小化系统调用开销
-**
-** 安全考虑：
-** - 文件路径验证：防止路径遍历攻击
-** - 命令注入防护：安全的命令执行机制
-** - 权限检查：文件操作权限验证
-** - 资源管理：防止资源泄漏和溢出
-**
-** 版本信息：$Id: loslib.c,v 1.19.1.3 2008/01/18 16:38:18 roberto Exp $
-** 版权声明：参见 lua.h 中的版权声明
-*/
+﻿/**
+ * @file loslib.c
+ * @brief Lua操作系统库：系统调用和平台服务的完整封装
+ *
+ * 版权信息：
+ * $Id: loslib.c,v 1.19.1.3 2008/01/18 16:38:18 roberto Exp $
+ * 标准操作系统库
+ * 版权声明见lua.h文件
+ *
+ * 程序概述：
+ * 本文件实现了Lua的操作系统接口库，提供了对底层系统服务的
+ * 高级封装。它是Lua与操作系统交互的主要桥梁，支持文件操作、
+ * 进程控制、时间处理、环境变量管理等核心系统功能。
+ *
+ * 主要功能：
+ * 1. 文件系统操作（删除、重命名、临时文件）
+ * 2. 进程控制（程序执行、退出处理）
+ * 3. 时间日期处理（获取、格式化、计算）
+ * 4. 环境变量操作（读取系统环境）
+ * 5. 本地化支持（区域设置管理）
+ * 6. 系统时钟和性能计时
+ * 7. 跨平台兼容性处理
+ *
+ * 设计特点：
+ * 1. 跨平台兼容：统一的API隐藏平台差异
+ * 2. 错误处理：完善的错误报告和异常管理
+ * 3. 类型安全：严格的参数检查和类型转换
+ * 4. 性能优化：高效的系统调用封装
+ * 5. 标准遵循：遵循C标准库和POSIX规范
+ *
+ * 系统编程技术：
+ * - C标准库函数的安全封装
+ * - 系统调用的错误处理模式
+ * - 跨平台的时间日期处理
+ * - 环境变量和本地化支持
+ * - 文件系统操作的抽象
+ *
+ * 应用场景：
+ * - 系统管理脚本和工具
+ * - 文件处理和批量操作
+ * - 日志记录和时间戳生成
+ * - 跨平台应用程序开发
+ * - 系统监控和性能分析
+ *
+ * @author Lua开发团队
+ * @version 5.1.5
+ * @date 2008
+ *
+ * @note 这是Lua标准库的系统接口实现
+ * @see lua.h, lauxlib.h, lualib.h
+ */
 
-// 系统头文件包含
-#include <errno.h>    // 错误码定义
-#include <locale.h>   // 本地化支持
-#include <stdlib.h>   // 标准库函数
-#include <string.h>   // 字符串处理
-#include <time.h>     // 时间处理
+#include <errno.h>
+#include <locale.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
 
-// 模块标识定义
 #define loslib_c
 #define LUA_LIB
 
-// Lua 核心头文件
 #include "lua.h"
 
-// Lua 辅助库头文件
 #include "lauxlib.h"
 #include "lualib.h"
 
-/*
-** [工具函数] 推送操作结果到 Lua 栈
-**
-** 功能描述：
-** 根据系统调用的执行结果，向 Lua 栈推送相应的返回值。
-** 成功时返回 true，失败时返回 nil、错误消息和错误码。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-** @param i - int：操作结果标志（非零表示成功）
-** @param filename - const char*：相关文件名（可为 NULL）
-**
-** 返回值：
-** @return int：推送到栈的值的数量（成功返回1，失败返回3）
-**
-** 栈操作：
-** 成功时：推送 boolean(true)
-** 失败时：推送 nil, 错误消息字符串, 错误码整数
-**
-** 错误处理机制：
-** - 保存 errno 值，防止 Lua API 调用改变错误状态
-** - 使用 strerror 获取人类可读的错误描述
-** - 提供错误码用于程序化错误处理
-** - 支持文件名上下文信息
-**
-** 设计说明：
-** 这是操作系统库中统一的错误处理模式，确保所有系统调用
-** 都能提供一致的错误报告格式。
-*/
-static int os_pushresult(lua_State *L, int i, const char *filename) 
-{
-    // 保存当前的 errno 值，因为后续的 Lua API 调用可能会改变它
-    int en = errno;
-    
-    if (i) 
-    {
-        // 操作成功，推送 true
+/**
+ * @defgroup SystemUtilities 系统工具函数
+ * @brief 系统操作的基础工具和错误处理机制
+ *
+ * 系统工具函数提供了统一的错误处理、结果返回和
+ * 状态管理功能，是所有系统操作函数的基础。
+ * @{
+ */
+
+/**
+ * @brief 推送系统操作结果到Lua栈
+ *
+ * 统一处理系统操作的返回值，提供一致的错误报告格式。
+ * 成功时返回true，失败时返回nil、错误消息和错误码。
+ *
+ * @param L Lua状态机指针
+ * @param i 操作结果（非0表示成功，0表示失败）
+ * @param filename 相关的文件名（用于错误消息）
+ * @return 返回值数量（成功时1个，失败时3个）
+ *
+ * @note 保存errno值避免被Lua API调用修改
+ * @note 提供详细的错误信息和系统错误码
+ *
+ * @see strerror, lua_pushboolean, lua_pushfstring
+ *
+ * 返回值格式：
+ * - 成功：true
+ * - 失败：nil, "filename: error message", error_code
+ *
+ * 错误处理流程：
+ * 1. 保存当前errno值
+ * 2. 检查操作结果
+ * 3. 成功时推送true并返回1
+ * 4. 失败时推送nil、错误消息、错误码并返回3
+ *
+ * 使用场景：
+ * - 文件操作结果处理
+ * - 系统调用状态报告
+ * - 统一的错误信息格式
+ * - 跨平台的错误处理
+ *
+ * 错误消息示例：
+ * ```
+ * "test.txt: No such file or directory"
+ * "output.dat: Permission denied"
+ * ```
+ */
+static int os_pushresult (lua_State *L, int i, const char *filename) {
+    int en = errno;  /* Lua API调用可能改变这个值 */
+    if (i) {
         lua_pushboolean(L, 1);
         return 1;
     }
-    else 
-    {
-        // 操作失败，推送详细的错误信息
+    else {
         lua_pushnil(L);
-        
-        if (filename)
-        {
-            // 包含文件名的错误消息
-            lua_pushfstring(L, "%s: %s", filename, strerror(en));
-        }
-        else
-        {
-            // 仅包含错误描述的消息
-            lua_pushfstring(L, "%s", strerror(en));
-        }
-        
-        // 推送错误码
+        lua_pushfstring(L, "%s: %s", filename, strerror(en));
         lua_pushinteger(L, en);
         return 3;
     }
 }
 
-/*
-** [系统调用] 执行系统命令
-**
-** 功能描述：
-** 执行指定的系统命令，返回命令的退出状态码。
-** 如果没有提供命令，则检查命令处理器是否可用。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：string 命令（可选）
-** 输出：integer 退出状态码
-**
-** 系统调用原理：
-** 使用 C 标准库的 system() 函数，该函数：
-** 1. 创建子进程
-** 2. 在子进程中执行 shell
-** 3. 由 shell 解析和执行命令
-** 4. 返回命令的退出状态
-**
-** 平台差异：
-** - Unix/Linux：使用 /bin/sh 执行命令
-** - Windows：使用 cmd.exe 或 command.com
-** - 返回值格式可能因平台而异
-**
-** 安全考虑：
-** - 命令通过 shell 执行，存在注入风险
-** - 应该验证和清理用户输入
-** - 避免执行不受信任的命令
-**
-** 使用示例：
-** status = os.execute("ls -l")        -- Unix/Linux
-** status = os.execute("dir")          -- Windows
-** available = os.execute()            -- 检查命令处理器
-*/
-static int os_execute(lua_State *L) 
-{
+/** @} */ /* 结束系统工具函数文档组 */
+
+/**
+ * @defgroup ProcessControl 进程控制系统
+ * @brief 进程执行、控制和管理功能
+ *
+ * 进程控制系统提供了执行外部程序、获取执行结果
+ * 和管理进程生命周期的功能。
+ * @{
+ */
+
+/**
+ * @brief 执行系统命令
+ *
+ * 执行指定的系统命令并返回其退出状态码。
+ * 这是os.execute函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（退出状态码）
+ *
+ * @note 参数1：要执行的命令字符串（可选，默认为NULL）
+ * @note 返回系统命令的退出状态码
+ *
+ * @see system, luaL_optstring
+ *
+ * 执行机制：
+ * - 使用C标准库的system函数
+ * - 支持shell命令和可执行程序
+ * - 返回程序的退出状态码
+ * - NULL参数检查shell可用性
+ *
+ * 参数处理：
+ * - 参数存在：执行指定命令
+ * - 参数为NULL：检查命令处理器可用性
+ * - 可选参数：默认为NULL
+ *
+ * 返回值含义：
+ * - 0：命令成功执行
+ * - 非0：命令执行失败或退出码
+ * - 具体含义依赖于系统和命令
+ *
+ * 使用示例：
+ * ```lua
+ * local status = os.execute("ls -l")
+ * local available = os.execute()  -- 检查shell可用性
+ * ```
+ *
+ * 安全考虑：
+ * - 命令注入风险
+ * - 权限和安全策略
+ * - 跨平台命令差异
+ * - 错误处理和异常情况
+ */
+static int os_execute (lua_State *L) {
     lua_pushinteger(L, system(luaL_optstring(L, 1, NULL)));
     return 1;
 }
 
-/*
-** [文件操作] 删除文件
-**
-** 功能描述：
-** 删除指定的文件或空目录。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：os_pushresult 的返回值
-**
-** 栈操作：
-** 输入：string 文件名
-** 输出：成功时返回 true，失败时返回 nil, 错误消息, 错误码
-**
-** 系统调用原理：
-** 使用 C 标准库的 remove() 函数，该函数：
-** - 对于文件：调用 unlink() 系统调用
-** - 对于目录：调用 rmdir() 系统调用（仅限空目录）
-** - 原子操作，要么成功要么失败
-**
-** 平台兼容性：
-** - Unix/Linux：支持符号链接和特殊文件
-** - Windows：支持长文件名和 Unicode
-** - 权限检查：需要对父目录有写权限
-**
-** 错误情况：
-** - ENOENT：文件不存在
-** - EACCES：权限不足
-** - EBUSY：文件正在使用
-** - EISDIR：尝试删除非空目录
-**
-** 使用示例：
-** success = os.remove("temp.txt")
-** success, err, code = os.remove("nonexistent.txt")
-*/
-static int os_remove(lua_State *L) 
-{
+/** @} */ /* 结束进程控制系统文档组 */
+
+/**
+ * @defgroup FileSystemOperations 文件系统操作
+ * @brief 文件和目录的基本操作功能
+ *
+ * 文件系统操作提供了文件删除、重命名、临时文件生成
+ * 等基础文件管理功能。
+ * @{
+ */
+
+/**
+ * @brief 删除文件
+ *
+ * 删除指定的文件。这是os.remove函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 返回值数量（成功时1个，失败时3个）
+ *
+ * @note 参数1：要删除的文件名
+ * @note 使用os_pushresult统一处理结果
+ *
+ * @see remove, os_pushresult, luaL_checkstring
+ *
+ * 删除机制：
+ * - 使用C标准库的remove函数
+ * - 支持文件和空目录删除
+ * - 跨平台的统一接口
+ * - 详细的错误报告
+ *
+ * 错误情况：
+ * - 文件不存在
+ * - 权限不足
+ * - 文件正在使用
+ * - 目录非空
+ *
+ * 返回值：
+ * - 成功：true
+ * - 失败：nil, error_message, error_code
+ *
+ * 使用示例：
+ * ```lua
+ * local success, err, code = os.remove("temp.txt")
+ * if not success then
+ *     print("删除失败:", err, code)
+ * end
+ * ```
+ */
+static int os_remove (lua_State *L) {
     const char *filename = luaL_checkstring(L, 1);
     return os_pushresult(L, remove(filename) == 0, filename);
 }
 
-/*
-** [文件操作] 重命名文件
-**
-** 功能描述：
-** 将文件从一个名称重命名为另一个名称，也可用于移动文件。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：os_pushresult 的返回值
-**
-** 栈操作：
-** 输入：string 原文件名, string 新文件名
-** 输出：成功时返回 true，失败时返回 nil, 错误消息, 错误码
-**
-** 系统调用原理：
-** 使用 C 标准库的 rename() 函数，该函数：
-** - 原子操作：要么完全成功要么完全失败
-** - 如果目标文件存在，会被覆盖（Unix）或失败（Windows）
-** - 可以在同一文件系统内移动文件
-**
-** 平台差异：
-** - Unix/Linux：如果目标存在会被覆盖
-** - Windows：如果目标存在会失败
-** - 跨文件系统移动可能不支持
-**
-** 限制条件：
-** - 源文件必须存在
-** - 对源文件的父目录需要写权限
-** - 对目标文件的父目录需要写权限
-** - 通常不能跨文件系统边界
-**
-** 错误情况：
-** - ENOENT：源文件不存在
-** - EACCES：权限不足
-** - EXDEV：跨文件系统操作
-** - EEXIST：目标文件已存在（Windows）
-**
-** 使用示例：
-** success = os.rename("old.txt", "new.txt")
-** success = os.rename("file.txt", "backup/file.txt")
-*/
-static int os_rename(lua_State *L) 
-{
+/**
+ * @brief 重命名文件
+ *
+ * 将文件从一个名称重命名为另一个名称。
+ * 这是os.rename函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 返回值数量（成功时1个，失败时3个）
+ *
+ * @note 参数1：原文件名
+ * @note 参数2：新文件名
+ *
+ * @see rename, os_pushresult, luaL_checkstring
+ *
+ * 重命名机制：
+ * - 使用C标准库的rename函数
+ * - 支持文件和目录重命名
+ * - 可用于移动文件（同一文件系统内）
+ * - 原子操作（在支持的系统上）
+ *
+ * 操作限制：
+ * - 目标文件存在时可能覆盖
+ * - 跨文件系统移动可能失败
+ * - 权限检查和访问控制
+ * - 平台特定的行为差异
+ *
+ * 错误情况：
+ * - 源文件不存在
+ * - 目标路径无效
+ * - 权限不足
+ * - 跨设备操作
+ *
+ * 使用示例：
+ * ```lua
+ * local success = os.rename("old.txt", "new.txt")
+ * local moved = os.rename("file.txt", "backup/file.txt")
+ * ```
+ */
+static int os_rename (lua_State *L) {
     const char *fromname = luaL_checkstring(L, 1);
     const char *toname = luaL_checkstring(L, 2);
     return os_pushresult(L, rename(fromname, toname) == 0, fromname);
 }
 
-/*
-** [文件操作] 生成临时文件名
-**
-** 功能描述：
-** 生成一个唯一的临时文件名，用于创建临时文件。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（成功返回1，失败触发错误）
-**
-** 栈操作：
-** 输入：无参数
-** 输出：string 临时文件名
-**
-** 实现原理：
-** 使用 lua_tmpnam 宏（通常映射到 tmpnam）生成唯一文件名：
-** - 基于当前时间和进程ID
-** - 确保文件名在系统中唯一
-** - 通常放在系统临时目录中
-**
-** 平台差异：
-** - Unix/Linux：通常在 /tmp 目录下
-** - Windows：通常在 %TEMP% 目录下
-** - 文件名格式因平台而异
-**
-** 安全考虑：
-** - 存在竞态条件：生成名称到创建文件之间的时间窗口
-** - 建议使用后立即创建文件
-** - 某些系统提供更安全的 mkstemp() 替代方案
-**
-** 缓冲区管理：
-** - 使用固定大小的缓冲区 LUA_TMPNAMBUFSIZE
-** - 防止缓冲区溢出
-** - 确保字符串正确终止
-**
-** 错误处理：
-** 如果无法生成唯一文件名（极少见），会触发 Lua 错误。
-**
-** 使用示例：
-** tmpfile = os.tmpname()
-** -- 立即创建文件以避免竞态条件
-** f = io.open(tmpfile, "w")
-*/
-static int os_tmpname(lua_State *L)
-{
+/**
+ * @brief 生成临时文件名
+ *
+ * 生成一个唯一的临时文件名。这是os.tmpname函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（临时文件名字符串）
+ *
+ * @note 不创建实际文件，仅生成文件名
+ * @note 使用系统特定的临时目录
+ *
+ * @see lua_tmpnam, luaL_error, lua_pushstring
+ *
+ * 生成机制：
+ * - 使用lua_tmpnam宏生成唯一名称
+ * - 基于系统时间和进程ID
+ * - 遵循系统临时文件约定
+ * - 跨平台的兼容性处理
+ *
+ * 安全考虑：
+ * - 文件名唯一性保证
+ * - 临时目录的权限
+ * - 竞态条件的避免
+ * - 清理和生命周期管理
+ *
+ * 错误处理：
+ * - 生成失败时抛出Lua错误
+ * - 提供明确的错误消息
+ * - 不返回无效的文件名
+ *
+ * 使用示例：
+ * ```lua
+ * local tmpfile = os.tmpname()
+ * local f = io.open(tmpfile, "w")
+ * -- 使用临时文件
+ * f:close()
+ * os.remove(tmpfile)  -- 清理
+ * ```
+ *
+ * 注意事项：
+ * - 需要手动删除临时文件
+ * - 文件名不保证在所有系统上相同格式
+ * - 可能的安全漏洞（符号链接攻击等）
+ */
+static int os_tmpname (lua_State *L) {
     char buff[LUA_TMPNAMBUFSIZE];
     int err;
-
-    // 生成临时文件名
     lua_tmpnam(buff, err);
-
     if (err)
-    {
         return luaL_error(L, "unable to generate a unique filename");
-    }
-
     lua_pushstring(L, buff);
     return 1;
 }
 
-/*
-** [环境变量] 获取环境变量值
-**
-** 功能描述：
-** 获取指定环境变量的值。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：string 环境变量名
-** 输出：string 环境变量值 或 nil（如果不存在）
-**
-** 系统调用原理：
-** 使用 C 标准库的 getenv() 函数：
-** - 在进程的环境变量表中查找指定变量
-** - 返回指向环境字符串的指针
-** - 如果变量不存在，返回 NULL
-**
-** 平台兼容性：
-** - Unix/Linux：环境变量区分大小写
-** - Windows：环境变量不区分大小写
-** - 支持 Unicode 环境变量（平台相关）
-**
-** 常见环境变量：
-** - PATH：可执行文件搜索路径
-** - HOME/USERPROFILE：用户主目录
-** - TEMP/TMP：临时文件目录
-** - LANG/LC_*：本地化设置
-**
-** 安全考虑：
-** - 环境变量可能包含敏感信息
-** - 返回的指针指向静态内存，不应修改
-** - 多线程环境下可能存在竞态条件
-**
-** 内存管理：
-** - getenv 返回的指针由系统管理
-** - 不需要手动释放内存
-** - 字符串内容可能在后续调用中改变
-**
-** 使用示例：
-** path = os.getenv("PATH")
-** home = os.getenv("HOME") or os.getenv("USERPROFILE")
-** temp = os.getenv("TEMP") or "/tmp"
-*/
-static int os_getenv(lua_State *L)
-{
-    // getenv 返回 NULL 时，lua_pushstring 会推送 nil
-    lua_pushstring(L, getenv(luaL_checkstring(L, 1)));
+/** @} */ /* 结束文件系统操作文档组 */
+
+/**
+ * @defgroup EnvironmentAccess 环境变量访问
+ * @brief 系统环境变量的读取和管理
+ *
+ * 环境变量访问提供了读取系统环境变量的功能，
+ * 支持配置管理和系统信息获取。
+ * @{
+ */
+
+/**
+ * @brief 获取环境变量
+ *
+ * 获取指定环境变量的值。这是os.getenv函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（环境变量值或nil）
+ *
+ * @note 参数1：环境变量名
+ * @note 变量不存在时返回nil
+ *
+ * @see getenv, luaL_checkstring, lua_pushstring
+ *
+ * 获取机制：
+ * - 使用C标准库的getenv函数
+ * - 返回环境变量的字符串值
+ * - 不存在时自动推送nil
+ * - 跨平台的统一接口
+ *
+ * 环境变量特性：
+ * - 进程级别的配置信息
+ * - 系统和用户设置
+ * - 路径和配置参数
+ * - 本地化和区域信息
+ *
+ * 常用环境变量：
+ * - PATH：可执行文件搜索路径
+ * - HOME：用户主目录
+ * - TEMP/TMP：临时目录
+ * - LANG：语言设置
+ *
+ * 使用示例：
+ * ```lua
+ * local path = os.getenv("PATH")
+ * local home = os.getenv("HOME") or os.getenv("USERPROFILE")
+ * local temp = os.getenv("TEMP") or "/tmp"
+ * ```
+ *
+ * 安全考虑：
+ * - 环境变量可能包含敏感信息
+ * - 注入攻击的风险
+ * - 跨平台的变量名差异
+ * - 编码和字符集问题
+ */
+static int os_getenv (lua_State *L) {
+    lua_pushstring(L, getenv(luaL_checkstring(L, 1)));  /* 如果NULL则推送nil */
     return 1;
 }
 
-/*
-** [时间处理] 获取 CPU 时间
-**
-** 功能描述：
-** 获取程序消耗的 CPU 时间（以秒为单位）。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：无参数
-** 输出：number CPU 时间（秒）
-**
-** 时间测量原理：
-** 使用 C 标准库的 clock() 函数：
-** - 返回程序启动以来的 CPU 时钟数
-** - 除以 CLOCKS_PER_SEC 转换为秒
-** - 只计算 CPU 时间，不包括等待时间
-**
-** 精度和范围：
-** - 精度取决于系统时钟分辨率
-** - 通常精度为毫秒级或微秒级
-** - 在某些系统上可能会溢出（长时间运行）
-**
-** 平台差异：
-** - Unix/Linux：通常测量用户态 + 内核态时间
-** - Windows：测量墙钟时间（wall clock time）
-** - CLOCKS_PER_SEC 值因平台而异
-**
-** 使用场景：
-** - 性能测量和基准测试
-** - 算法执行时间分析
-** - 程序优化和调试
-**
-** 注意事项：
-** - 多线程程序中的行为未定义
-** - 不适合测量实际经过的时间
-** - 系统负载会影响测量结果
-**
-** 使用示例：
-** start = os.clock()
-** -- 执行一些计算
-** elapsed = os.clock() - start
-** print("CPU time:", elapsed, "seconds")
-*/
-static int os_clock(lua_State *L)
-{
-    lua_pushnumber(L, ((lua_Number)clock()) / (lua_Number)CLOCKS_PER_SEC);
+/** @} */ /* 结束环境变量访问文档组 */
+
+/**
+ * @defgroup TimeAndClock 时间和时钟系统
+ * @brief 时间获取、计算和性能测量功能
+ *
+ * 时间和时钟系统提供了CPU时间测量、性能分析
+ * 和程序计时的基础功能。
+ * @{
+ */
+
+/**
+ * @brief 获取CPU时间
+ *
+ * 获取程序使用的CPU时间（秒）。这是os.clock函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（CPU时间数值）
+ *
+ * @note 返回程序开始执行以来的CPU时间
+ * @note 用于性能测量和程序计时
+ *
+ * @see clock, CLOCKS_PER_SEC, lua_pushnumber
+ *
+ * 时间计算：
+ * - 使用C标准库的clock函数
+ * - 转换为秒为单位的浮点数
+ * - 基于CLOCKS_PER_SEC常量
+ * - 高精度的时间测量
+ *
+ * 测量特性：
+ * - CPU时间而非墙钟时间
+ * - 不包括等待和阻塞时间
+ * - 适用于性能分析
+ * - 跨平台的一致性
+ *
+ * 精度和限制：
+ * - 精度依赖于系统实现
+ * - 可能的溢出问题（长时间运行）
+ * - 多线程环境的考虑
+ * - 系统负载的影响
+ *
+ * 使用示例：
+ * ```lua
+ * local start = os.clock()
+ * -- 执行一些操作
+ * local elapsed = os.clock() - start
+ * print("CPU时间:", elapsed, "秒")
+ * ```
+ *
+ * 应用场景：
+ * - 算法性能测试
+ * - 代码优化分析
+ * - 基准测试工具
+ * - 程序性能监控
+ */
+static int os_clock (lua_State *L) {
+    lua_pushnumber(L, ((lua_Number)clock())/(lua_Number)CLOCKS_PER_SEC);
     return 1;
 }
 
-/*
-** ========================================================================
-** [时间日期模块] 时间和日期操作
-** ========================================================================
-**
-** 时间表示格式：
-** Lua 中的时间表使用以下字段：
-** - year：年份（如 2023）
-** - month：月份（1-12）
-** - day：日期（1-31）
-** - hour：小时（0-23）
-** - min：分钟（0-59）
-** - sec：秒（0-59，可能有闰秒）
-** - wday：星期几（1-7，1=星期日）
-** - yday：一年中的第几天（1-366）
-** - isdst：是否夏令时（true/false/nil）
-**
-** 时间戳格式：
-** - 使用 Unix 时间戳（自1970年1月1日UTC以来的秒数）
-** - 支持负值表示1970年之前的时间
-** - 精度通常为秒级
-**
-** 时区处理：
-** - 本地时间：基于系统时区设置
-** - UTC 时间：协调世界时，不受时区影响
-** - 夏令时：自动处理夏令时转换
-*/
+/** @} */ /* 结束时间和时钟系统文档组 */
 
-/*
-** [辅助函数] 设置时间表的整数字段
-**
-** 功能描述：
-** 在时间表中设置指定的整数字段。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-** @param key - const char*：字段名称
-** @param value - int：字段值
-**
-** 栈操作：
-** 假设栈顶是目标表，设置 table[key] = value
-**
-** 使用场景：
-** 用于构建时间表，设置年、月、日、时、分、秒等字段。
-*/
-static void setfield(lua_State *L, const char *key, int value)
-{
+
+/**
+ * @defgroup DateTimeOperations 时间日期操作系统
+ * @brief 时间日期的处理、格式化和计算功能
+ *
+ * 时间日期操作系统提供了完整的时间处理功能，包括
+ * 时间获取、格式化、解析和计算等核心操作。
+ *
+ * 日期表格式：
+ * - year: 年份（如2023）
+ * - month: 月份（1-12）
+ * - day: 日期（1-31）
+ * - hour: 小时（0-23）
+ * - min: 分钟（0-59）
+ * - sec: 秒（0-59）
+ * - wday: 星期几（1-7，1为星期日）
+ * - yday: 一年中的第几天（1-366）
+ * - isdst: 是否夏令时（true/false/nil）
+ * @{
+ */
+
+/**
+ * @brief 设置日期表的整数字段
+ *
+ * 在日期表中设置指定键的整数值。这是构建日期表的
+ * 基础工具函数。
+ *
+ * @param L Lua状态机指针
+ * @param key 字段名
+ * @param value 整数值
+ *
+ * @note 栈顶必须是目标表
+ * @note 操作后栈状态不变
+ *
+ * @see lua_pushinteger, lua_setfield
+ *
+ * 操作流程：
+ * 1. 将整数值推入栈
+ * 2. 设置表的指定字段
+ * 3. 自动弹出值，保持栈平衡
+ *
+ * 使用场景：
+ * - 构建os.date("*t")返回的表
+ * - 设置年、月、日等数值字段
+ * - 时间表的标准化构建
+ */
+static void setfield (lua_State *L, const char *key, int value) {
     lua_pushinteger(L, value);
     lua_setfield(L, -2, key);
 }
 
-/*
-** [辅助函数] 设置时间表的布尔字段
-**
-** 功能描述：
-** 在时间表中设置指定的布尔字段，支持未定义状态。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-** @param key - const char*：字段名称
-** @param value - int：字段值（负数表示未定义）
-**
-** 栈操作：
-** 假设栈顶是目标表，设置 table[key] = boolean(value)
-** 如果 value < 0，则不设置字段（保持 nil）
-**
-** 特殊处理：
-** - 负值表示未定义状态，不设置字段
-** - 0 表示 false
-** - 正值表示 true
-**
-** 使用场景：
-** 主要用于设置 isdst（夏令时）字段，该字段可能未定义。
-*/
-static void setboolfield(lua_State *L, const char *key, int value)
-{
-    if (value < 0)
-    {
-        // 未定义状态，不设置字段
-        return;
-    }
-
+/**
+ * @brief 设置日期表的布尔字段
+ *
+ * 在日期表中设置指定键的布尔值。支持未定义状态的处理。
+ *
+ * @param L Lua状态机指针
+ * @param key 字段名
+ * @param value 布尔值（负数表示未定义）
+ *
+ * @note 负值时不设置字段（保持nil）
+ * @note 用于处理可选的布尔属性
+ *
+ * @see lua_pushboolean, lua_setfield
+ *
+ * 值处理：
+ * - value < 0：不设置字段（未定义状态）
+ * - value == 0：设置为false
+ * - value > 0：设置为true
+ *
+ * 使用场景：
+ * - 设置isdst（夏令时）字段
+ * - 处理可选的布尔属性
+ * - 支持三态逻辑（true/false/nil）
+ */
+static void setboolfield (lua_State *L, const char *key, int value) {
+    if (value < 0)  /* 未定义？ */
+        return;  /* 不设置字段 */
     lua_pushboolean(L, value);
     lua_setfield(L, -2, key);
 }
 
-/*
-** [辅助函数] 获取时间表的布尔字段
-**
-** 功能描述：
-** 从时间表中获取指定的布尔字段值。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-** @param key - const char*：字段名称
-**
-** 返回值：
-** @return int：字段值（-1表示nil，0表示false，1表示true）
-**
-** 栈操作：
-** 假设栈顶是源表，获取 table[key] 的值
-** 操作后栈状态不变
-**
-** 三态逻辑：
-** - -1：字段不存在或为 nil（未定义）
-** - 0：字段为 false
-** - 1：字段为 true
-**
-** 使用场景：
-** 主要用于获取 isdst（夏令时）字段，支持未定义状态。
-*/
-static int getboolfield(lua_State *L, const char *key)
-{
+/**
+ * @brief 获取日期表的布尔字段
+ *
+ * 从日期表中获取指定键的布尔值，支持未定义状态。
+ *
+ * @param L Lua状态机指针
+ * @param key 字段名
+ * @return 布尔值（-1表示nil/未定义，0表示false，1表示true）
+ *
+ * @note 栈顶必须是源表
+ * @note 操作后栈状态不变
+ *
+ * @see lua_getfield, lua_isnil, lua_toboolean
+ *
+ * 返回值含义：
+ * - -1：字段为nil或不存在
+ * - 0：字段为false
+ * - 1：字段为true
+ *
+ * 操作流程：
+ * 1. 获取表的指定字段
+ * 2. 检查是否为nil
+ * 3. 转换为布尔值或返回-1
+ * 4. 弹出字段值，保持栈平衡
+ *
+ * 使用场景：
+ * - 解析os.time参数表
+ * - 获取isdst字段状态
+ * - 处理可选布尔参数
+ */
+static int getboolfield (lua_State *L, const char *key) {
     int res;
-
     lua_getfield(L, -1, key);
     res = lua_isnil(L, -1) ? -1 : lua_toboolean(L, -1);
     lua_pop(L, 1);
-
     return res;
 }
 
-/*
-** [辅助函数] 获取时间表的整数字段
-**
-** 功能描述：
-** 从时间表中获取指定的整数字段值，支持默认值。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-** @param key - const char*：字段名称
-** @param d - int：默认值（负数表示必需字段）
-**
-** 返回值：
-** @return int：字段值或默认值
-**
-** 栈操作：
-** 假设栈顶是源表，获取 table[key] 的值
-** 操作后栈状态不变
-**
-** 错误处理：
-** 如果字段不存在且默认值为负数，会触发 Lua 错误。
-** 这用于标识必需的字段（如 day、month、year）。
-**
-** 类型转换：
-** 如果字段存在但不是数字，使用默认值。
-** 如果是数字，转换为整数返回。
-**
-** 使用场景：
-** 用于从时间表中提取各个时间组件，构建 struct tm。
-*/
-static int getfield(lua_State *L, const char *key, int d)
-{
+/**
+ * @brief 获取日期表的整数字段
+ *
+ * 从日期表中获取指定键的整数值，支持默认值和必需字段检查。
+ *
+ * @param L Lua状态机指针
+ * @param key 字段名
+ * @param d 默认值（负数表示必需字段）
+ * @return 字段的整数值
+ *
+ * @note 栈顶必须是源表
+ * @note 必需字段缺失时抛出错误
+ *
+ * @see lua_getfield, lua_isnumber, lua_tointeger, luaL_error
+ *
+ * 参数处理：
+ * - 字段存在且为数字：返回整数值
+ * - 字段不存在且d >= 0：返回默认值d
+ * - 字段不存在且d < 0：抛出错误
+ *
+ * 错误处理：
+ * - 必需字段缺失时提供清晰的错误消息
+ * - 包含字段名的详细错误信息
+ * - 帮助用户诊断日期表问题
+ *
+ * 操作流程：
+ * 1. 获取表的指定字段
+ * 2. 检查是否为数字类型
+ * 3. 转换为整数或使用默认值
+ * 4. 弹出字段值，保持栈平衡
+ * 5. 返回最终结果
+ *
+ * 使用场景：
+ * - 解析os.time参数表
+ * - 获取年、月、日等数值字段
+ * - 支持可选和必需字段
+ * - 提供合理的默认值
+ */
+static int getfield (lua_State *L, const char *key, int d) {
     int res;
-
     lua_getfield(L, -1, key);
-
     if (lua_isnumber(L, -1))
-    {
         res = (int)lua_tointeger(L, -1);
-    }
-    else
-    {
+    else {
         if (d < 0)
-        {
             return luaL_error(L, "field " LUA_QS " missing in date table", key);
-        }
         res = d;
     }
-
     lua_pop(L, 1);
     return res;
 }
 
-/*
-** [时间处理] 日期格式化函数
-**
-** 功能描述：
-** 根据指定的格式字符串格式化日期和时间。
-** 支持两种模式：格式化字符串输出和时间表输出。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：string 格式字符串（可选，默认"%c"）, number 时间戳（可选，默认当前时间）
-** 输出：string 格式化的日期字符串 或 table 时间表
-**
-** 格式字符串模式：
-** - 普通格式字符串：使用 strftime 格式化
-** - "*t"：返回时间表
-** - "!"开头：使用 UTC 时间而非本地时间
-**
-** 时区处理：
-** - 默认使用本地时间（localtime）
-** - 格式字符串以"!"开头时使用 UTC 时间（gmtime）
-** - 自动处理夏令时转换
-**
-** strftime 格式说明：
-** - %Y：四位年份（如 2023）
-** - %m：月份（01-12）
-** - %d：日期（01-31）
-** - %H：小时（00-23）
-** - %M：分钟（00-59）
-** - %S：秒（00-59）
-** - %w：星期几（0-6，0=星期日）
-** - %j：一年中的第几天（001-366）
-** - %c：完整的日期时间表示
-**
-** 时间表字段：
-** 当格式为"*t"时，返回包含以下字段的表：
-** - sec, min, hour, day, month, year
-** - wday（星期几，1-7）
-** - yday（一年中的第几天，1-366）
-** - isdst（是否夏令时）
-**
-** 错误处理：
-** - 无效时间戳：返回 nil
-** - 格式化失败：可能返回空字符串
-**
-** 缓冲区管理：
-** - 使用固定大小缓冲区（200字节）
-** - 对于超长格式化结果可能截断
-**
-** 使用示例：
-** date_str = os.date("%Y-%m-%d %H:%M:%S")
-** utc_str = os.date("!%Y-%m-%d %H:%M:%S")
-** time_table = os.date("*t")
-** custom = os.date("%A, %B %d, %Y", timestamp)
-*/
-static int os_date(lua_State *L)
-{
+/** @} */ /* 结束时间日期操作系统文档组 */
+
+/**
+ * @brief 格式化日期和时间
+ *
+ * 根据指定格式字符串格式化日期和时间，或返回日期表。
+ * 这是os.date函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（格式化字符串或日期表）
+ *
+ * @note 参数1：格式字符串（可选，默认为"%c"）
+ * @note 参数2：时间戳（可选，默认为当前时间）
+ *
+ * @see strftime, gmtime, localtime, time
+ *
+ * 格式字符串特殊值：
+ * - "*t"：返回日期表而不是字符串
+ * - "!..."：使用UTC时间而不是本地时间
+ * - 其他：使用strftime格式化
+ *
+ * 日期表字段：
+ * - sec：秒（0-59）
+ * - min：分钟（0-59）
+ * - hour：小时（0-23）
+ * - day：日期（1-31）
+ * - month：月份（1-12）
+ * - year：年份（如2023）
+ * - wday：星期几（1-7，1为星期日）
+ * - yday：一年中的第几天（1-366）
+ * - isdst：是否夏令时
+ *
+ * 处理流程：
+ * 1. **参数解析**：
+ *    - 获取格式字符串（默认"%c"）
+ *    - 获取时间戳（默认当前时间）
+ *
+ * 2. **时区处理**：
+ *    - 检查格式字符串是否以"!"开头
+ *    - "!"开头使用gmtime（UTC时间）
+ *    - 否则使用localtime（本地时间）
+ *
+ * 3. **格式处理**：
+ *    - 无效时间：返回nil
+ *    - "*t"格式：创建并返回日期表
+ *    - 其他格式：使用strftime格式化
+ *
+ * 4. **字符串格式化**：
+ *    - 逐字符处理格式字符串
+ *    - 非%字符直接添加
+ *    - %字符调用strftime处理
+ *    - 使用缓冲区构建结果
+ *
+ * strftime格式说明符：
+ * - %Y：四位年份
+ * - %m：月份（01-12）
+ * - %d：日期（01-31）
+ * - %H：小时（00-23）
+ * - %M：分钟（00-59）
+ * - %S：秒（00-59）
+ * - %c：完整日期时间
+ * - %x：日期
+ * - %X：时间
+ *
+ * 使用示例：
+ * ```lua
+ * local now = os.date()           -- 默认格式
+ * local iso = os.date("%Y-%m-%d") -- ISO日期格式
+ * local utc = os.date("!%c")      -- UTC时间
+ * local table = os.date("*t")     -- 日期表
+ * ```
+ *
+ * 错误处理：
+ * - 无效时间戳：返回nil
+ * - 格式化失败：可能返回空字符串
+ * - 缓冲区溢出：自动处理
+ *
+ * 性能考虑：
+ * - 缓冲区大小优化（200字节）
+ * - 逐字符处理避免重复解析
+ * - 高效的字符串构建
+ */
+static int os_date (lua_State *L) {
     const char *s = luaL_optstring(L, 1, "%c");
     time_t t = luaL_opt(L, (time_t)luaL_checknumber, 2, time(NULL));
     struct tm *stm;
-
-    // 检查是否使用 UTC 时间
-    if (*s == '!')
-    {
-        // UTC 时间
+    if (*s == '!') {  /* UTC？ */
         stm = gmtime(&t);
-        s++;  // 跳过 '!' 字符
+        s++;  /* 跳过'!' */
     }
     else
-    {
-        // 本地时间
         stm = localtime(&t);
-    }
-
-    if (stm == NULL)
-    {
-        // 无效的时间戳
+    if (stm == NULL)  /* 无效日期？ */
         lua_pushnil(L);
-    }
-    else if (strcmp(s, "*t") == 0)
-    {
-        // 返回时间表
-        lua_createtable(L, 0, 9);  // 创建包含9个字段的表
-
+    else if (strcmp(s, "*t") == 0) {
+        lua_createtable(L, 0, 9);  /* 9 = 字段数量 */
         setfield(L, "sec", stm->tm_sec);
         setfield(L, "min", stm->tm_min);
         setfield(L, "hour", stm->tm_hour);
         setfield(L, "day", stm->tm_mday);
-        setfield(L, "month", stm->tm_mon + 1);      // tm_mon 是 0-11
-        setfield(L, "year", stm->tm_year + 1900);   // tm_year 是从1900年开始
-        setfield(L, "wday", stm->tm_wday + 1);      // 转换为 1-7（1=星期日）
-        setfield(L, "yday", stm->tm_yday + 1);      // 转换为 1-366
-        setboolfield(L, "isdst", stm->tm_isdst);    // 夏令时标志
+        setfield(L, "month", stm->tm_mon+1);
+        setfield(L, "year", stm->tm_year+1900);
+        setfield(L, "wday", stm->tm_wday+1);
+        setfield(L, "yday", stm->tm_yday+1);
+        setboolfield(L, "isdst", stm->tm_isdst);
     }
-    else
-    {
-        // 格式化字符串输出
+    else {
         char cc[3];
         luaL_Buffer b;
-
-        cc[0] = '%';
-        cc[2] = '\0';
+        cc[0] = '%'; cc[2] = '\0';
         luaL_buffinit(L, &b);
-
-        // 逐字符处理格式字符串
-        for (; *s; s++)
-        {
-            if (*s != '%' || *(s + 1) == '\0')
-            {
-                // 普通字符或字符串末尾的 %
+        for (; *s; s++) {
+            if (*s != '%' || *(s + 1) == '\0')  /* 没有转换说明符？ */
                 luaL_addchar(&b, *s);
-            }
-            else
-            {
-                // 格式化指令
+            else {
                 size_t reslen;
-                char buff[200];  // 格式化结果缓冲区
-
-                cc[1] = *(++s);  // 获取格式字符
+                char buff[200];  /* 应该足够大以容纳任何转换结果 */
+                cc[1] = *(++s);
                 reslen = strftime(buff, sizeof(buff), cc, stm);
                 luaL_addlstring(&b, buff, reslen);
             }
         }
-
         luaL_pushresult(&b);
     }
-
     return 1;
 }
 
-/*
-** [时间处理] 时间转换函数
-**
-** 功能描述：
-** 将时间表转换为时间戳，或获取当前时间戳。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：table 时间表（可选）
-** 输出：number 时间戳 或 nil（转换失败）
-**
-** 两种调用模式：
-** 1. 无参数：返回当前时间戳
-** 2. 时间表参数：将时间表转换为时间戳
-**
-** 时间表字段要求：
-** - year：年份（必需）
-** - month：月份 1-12（必需）
-** - day：日期 1-31（必需）
-** - hour：小时 0-23（默认12）
-** - min：分钟 0-59（默认0）
-** - sec：秒 0-59（默认0）
-** - isdst：夏令时标志（可选）
-**
-** 系统调用原理：
-** - 无参数：调用 time(NULL) 获取当前时间
-** - 有参数：使用 mktime() 转换 struct tm 为 time_t
-**
-** mktime 函数特点：
-** - 自动处理日期溢出（如13月变为次年1月）
-** - 自动处理夏令时转换
-** - 使用本地时区设置
-** - 可能修改输入的 struct tm
-**
-** 错误处理：
-** - 无效日期：mktime 返回 -1，函数返回 nil
-** - 超出范围：某些系统限制时间范围
-**
-** 夏令时处理：
-** - isdst > 0：强制使用夏令时
-** - isdst = 0：强制不使用夏令时
-** - isdst < 0：让系统自动判断
-**
-** 使用示例：
-** current = os.time()
-** timestamp = os.time({year=2023, month=12, day=25, hour=10, min=30})
-** invalid = os.time({year=2023, month=13, day=32})  -- 返回 nil
-*/
-static int os_time(lua_State *L)
-{
+/**
+ * @brief 计算时间戳或转换日期表为时间戳
+ *
+ * 获取当前时间戳或将日期表转换为时间戳。
+ * 这是os.time函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（时间戳数值或nil）
+ *
+ * @note 无参数：返回当前时间戳
+ * @note 参数1：日期表，转换为时间戳
+ *
+ * @see time, mktime, getfield, getboolfield
+ *
+ * 调用模式：
+ * 1. **无参数调用**：
+ *    - 使用time(NULL)获取当前时间
+ *    - 返回Unix时间戳（秒）
+ *
+ * 2. **日期表调用**：
+ *    - 参数必须是表类型
+ *    - 从表中提取日期时间字段
+ *    - 使用mktime转换为时间戳
+ *
+ * 日期表字段处理：
+ * - sec：秒（默认0）
+ * - min：分钟（默认0）
+ * - hour：小时（默认12）
+ * - day：日期（必需）
+ * - month：月份（必需，1-12）
+ * - year：年份（必需）
+ * - isdst：夏令时标志（可选）
+ *
+ * 字段转换：
+ * - month：Lua使用1-12，C使用0-11
+ * - year：Lua使用实际年份，C使用1900年起
+ * - wday和yday：由mktime自动计算
+ *
+ * 处理流程：
+ * 1. **参数检查**：
+ *    - 无参数或nil：获取当前时间
+ *    - 有参数：检查是否为表类型
+ *
+ * 2. **字段提取**：
+ *    - 使用getfield获取数值字段
+ *    - 使用getboolfield获取布尔字段
+ *    - 应用必要的转换和默认值
+ *
+ * 3. **时间转换**：
+ *    - 调用mktime进行转换
+ *    - 处理转换失败的情况
+ *    - 返回时间戳或nil
+ *
+ * 错误处理：
+ * - 无效日期：mktime返回-1，推送nil
+ * - 缺少必需字段：getfield抛出错误
+ * - 类型错误：luaL_checktype抛出错误
+ *
+ * 使用示例：
+ * ```lua
+ * local now = os.time()  -- 当前时间戳
+ * local custom = os.time({
+ *     year = 2023, month = 12, day = 25,
+ *     hour = 10, min = 30, sec = 0
+ * })
+ * ```
+ *
+ * 时间戳特性：
+ * - Unix时间戳（1970年1月1日起的秒数）
+ * - 跨平台的标准时间表示
+ * - 适用于时间计算和比较
+ * - 精度为秒级
+ */
+static int os_time (lua_State *L) {
     time_t t;
-
-    if (lua_isnoneornil(L, 1))
-    {
-        // 无参数，获取当前时间
-        t = time(NULL);
-    }
-    else
-    {
-        // 有参数，转换时间表
+    if (lua_isnoneornil(L, 1))  /* 无参数调用？ */
+        t = time(NULL);  /* 获取当前时间 */
+    else {
         struct tm ts;
-
         luaL_checktype(L, 1, LUA_TTABLE);
-        lua_settop(L, 1);  // 确保表在栈顶
-
-        // 从时间表中提取各个字段
+        lua_settop(L, 1);  /* 确保表在栈顶 */
         ts.tm_sec = getfield(L, "sec", 0);
         ts.tm_min = getfield(L, "min", 0);
         ts.tm_hour = getfield(L, "hour", 12);
-        ts.tm_mday = getfield(L, "day", -1);        // 必需字段
-        ts.tm_mon = getfield(L, "month", -1) - 1;   // 必需字段，转换为 0-11
-        ts.tm_year = getfield(L, "year", -1) - 1900; // 必需字段，转换为从1900年开始
-        ts.tm_isdst = getboolfield(L, "isdst");     // 夏令时标志
-
-        // 转换为时间戳
+        ts.tm_mday = getfield(L, "day", -1);
+        ts.tm_mon = getfield(L, "month", -1) - 1;
+        ts.tm_year = getfield(L, "year", -1) - 1900;
+        ts.tm_isdst = getboolfield(L, "isdst");
         t = mktime(&ts);
     }
-
     if (t == (time_t)(-1))
-    {
-        // 转换失败
         lua_pushnil(L);
-    }
     else
-    {
-        // 转换成功
         lua_pushnumber(L, (lua_Number)t);
-    }
-
     return 1;
 }
 
-/*
-** [时间处理] 时间差计算函数
-**
-** 功能描述：
-** 计算两个时间戳之间的差值（以秒为单位）。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：number 时间戳1, number 时间戳2（可选，默认0）
-** 输出：number 时间差（秒）
-**
-** 计算公式：
-** 结果 = 时间戳1 - 时间戳2
-**
-** 系统调用原理：
-** 使用 C 标准库的 difftime() 函数：
-** - 处理不同平台的时间表示差异
-** - 返回双精度浮点数结果
-** - 支持负值（时间戳1 < 时间戳2）
-**
-** 精度说明：
-** - 通常精度为秒级
-** - 某些系统可能支持更高精度
-** - 结果为浮点数，支持小数秒
-**
-** 使用场景：
-** - 计算时间间隔
-** - 性能测量
-** - 超时检查
-** - 日期计算
-**
-** 特殊情况：
-** - 相同时间戳：返回 0
-** - 时间戳1 < 时间戳2：返回负值
-** - 跨越夏令时边界：自动处理
-**
-** 使用示例：
-** start = os.time()
-** -- 执行一些操作
-** elapsed = os.difftime(os.time(), start)
-**
-** -- 计算两个特定时间的差值
-** t1 = os.time({year=2023, month=12, day=25})
-** t2 = os.time({year=2023, month=12, day=24})
-** diff = os.difftime(t1, t2)  -- 86400 秒（1天）
-*/
-static int os_difftime(lua_State *L)
-{
+/**
+ * @brief 计算两个时间戳的差值
+ *
+ * 计算两个时间戳之间的秒数差值。这是os.difftime函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（时间差的秒数）
+ *
+ * @note 参数1：结束时间戳
+ * @note 参数2：开始时间戳（可选，默认为0）
+ *
+ * @see difftime, luaL_checknumber, luaL_optnumber
+ *
+ * 计算公式：
+ * ```
+ * 结果 = 参数1 - 参数2
+ * ```
+ *
+ * 参数处理：
+ * - 参数1：必需的结束时间戳
+ * - 参数2：可选的开始时间戳（默认0）
+ * - 返回：时间差（秒，可为负数）
+ *
+ * 使用场景：
+ * - 计算时间间隔
+ * - 测量执行时间
+ * - 时间比较和排序
+ * - 日期计算
+ *
+ * 使用示例：
+ * ```lua
+ * local start = os.time()
+ * -- 执行一些操作
+ * local finish = os.time()
+ * local elapsed = os.difftime(finish, start)
+ * print("耗时:", elapsed, "秒")
+ * ```
+ *
+ * 技术特点：
+ * - 使用C标准库的difftime函数
+ * - 处理跨平台的时间差计算
+ * - 支持负数结果（时间倒退）
+ * - 精度为秒级
+ *
+ * 注意事项：
+ * - 结果可能为负数
+ * - 精度限制在秒级
+ * - 跨时区计算需要注意
+ * - 夏令时变化的影响
+ */
+static int os_difftime (lua_State *L) {
     lua_pushnumber(L, difftime((time_t)(luaL_checknumber(L, 1)),
                                (time_t)(luaL_optnumber(L, 2, 0))));
     return 1;
 }
 
-/*
-** [本地化] 设置本地化环境
-**
-** 功能描述：
-** 设置程序的本地化环境，影响字符分类、排序、数字格式、货币格式、时间格式等。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1）
-**
-** 栈操作：
-** 输入：string 本地化名称（可选）, string 类别（可选，默认"all"）
-** 输出：string 当前本地化设置 或 nil（设置失败）
-**
-** 本地化类别：
-** - "all"：所有类别
-** - "collate"：字符串排序规则
-** - "ctype"：字符分类和转换
-** - "monetary"：货币格式
-** - "numeric"：数字格式
-** - "time"：时间和日期格式
-**
-** 系统调用原理：
-** 使用 C 标准库的 setlocale() 函数：
-** - 设置指定类别的本地化环境
-** - 返回当前设置的字符串表示
-** - 影响其他 C 库函数的行为
-**
-** 本地化名称格式：
-** - "C" 或 "POSIX"：标准 C 本地化
-** - ""：使用系统默认本地化
-** - "zh_CN.UTF-8"：中文（中国）UTF-8 编码
-** - "en_US.UTF-8"：英文（美国）UTF-8 编码
-**
-** 影响的功能：
-** - 字符串比较和排序
-** - 数字的小数点符号
-** - 货币符号和格式
-** - 日期时间格式
-** - 字符分类（大小写、数字等）
-**
-** 平台差异：
-** - Unix/Linux：支持丰富的本地化设置
-** - Windows：使用不同的本地化名称格式
-** - 嵌入式系统：可能只支持基本设置
-**
-** 错误处理：
-** 如果指定的本地化不可用，setlocale 返回 NULL，函数返回 nil。
-**
-** 使用示例：
-** current = os.setlocale()           -- 获取当前设置
-** os.setlocale("C")                  -- 设置为标准 C 本地化
-** os.setlocale("", "all")            -- 使用系统默认
-** os.setlocale("zh_CN.UTF-8")       -- 设置为中文环境
-*/
-static int os_setlocale(lua_State *L)
-{
-    // 本地化类别常量数组：将字符串名称映射到系统常量
-    static const int cat[] =
-    {
-        LC_ALL,       // 所有本地化类别
-        LC_COLLATE,   // 字符串排序规则
-        LC_CTYPE,     // 字符分类和转换
-        LC_MONETARY,  // 货币格式
-        LC_NUMERIC,   // 数字格式
-        LC_TIME       // 时间和日期格式
-    };
+/** @} */ /* 结束时间日期操作系统文档组 */
 
-    // 本地化类别名称数组：用户可指定的类别名称
-    static const char *const catnames[] =
-    {
-        "all",        // 所有类别
-        "collate",    // 排序规则
-        "ctype",      // 字符类型
-        "monetary",   // 货币格式
-        "numeric",    // 数字格式
-        "time",       // 时间格式
-        NULL          // 数组结束标记
-    };
+/**
+ * @defgroup LocalizationAndExit 本地化和程序控制
+ * @brief 本地化设置和程序退出控制功能
+ *
+ * 本地化和程序控制提供了区域设置管理和程序
+ * 生命周期控制的功能。
+ * @{
+ */
 
-    const char *l = luaL_optstring(L, 1, NULL);  // 本地化名称
-    int op = luaL_checkoption(L, 2, "all", catnames);  // 类别选择
-
-    // 设置本地化并返回结果
+/**
+ * @brief 设置程序的本地化区域
+ *
+ * 设置或查询程序的本地化区域设置。这是os.setlocale函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（当前区域设置字符串）
+ *
+ * @note 参数1：区域设置字符串（可选，NULL查询当前设置）
+ * @note 参数2：区域类别（可选，默认"all"）
+ *
+ * @see setlocale, luaL_optstring, luaL_checkoption
+ *
+ * 支持的区域类别：
+ * - "all"：所有区域设置
+ * - "collate"：字符串排序规则
+ * - "ctype"：字符分类和转换
+ * - "monetary"：货币格式
+ * - "numeric"：数字格式
+ * - "time"：时间日期格式
+ *
+ * 区域设置字符串：
+ * - NULL：查询当前设置
+ * - ""：使用环境变量设置
+ * - "C"：使用标准C区域
+ * - "POSIX"：使用POSIX区域
+ * - 具体区域：如"en_US.UTF-8"
+ *
+ * 处理流程：
+ * 1. **参数解析**：
+ *    - 获取区域设置字符串（可选）
+ *    - 获取区域类别（默认"all"）
+ *
+ * 2. **类别映射**：
+ *    - 将字符串类别映射为LC_*常量
+ *    - 使用静态数组进行快速查找
+ *
+ * 3. **区域设置**：
+ *    - 调用setlocale函数
+ *    - 返回实际设置的区域字符串
+ *
+ * 使用示例：
+ * ```lua
+ * local current = os.setlocale()        -- 查询当前设置
+ * local old = os.setlocale("C")         -- 设置为C区域
+ * local utf8 = os.setlocale("", "all")  -- 使用环境变量
+ * ```
+ *
+ * 影响范围：
+ * - 字符串比较和排序
+ * - 数字和货币格式化
+ * - 时间日期显示格式
+ * - 字符分类函数行为
+ *
+ * 跨平台考虑：
+ * - 不同系统支持的区域不同
+ * - 区域名称格式可能不同
+ * - 某些区域可能不可用
+ * - 返回值表示实际设置结果
+ */
+static int os_setlocale (lua_State *L) {
+    static const int cat[] = {LC_ALL, LC_COLLATE, LC_CTYPE, LC_MONETARY,
+                              LC_NUMERIC, LC_TIME};
+    static const char *const catnames[] = {"all", "collate", "ctype", "monetary",
+                                           "numeric", "time", NULL};
+    const char *l = luaL_optstring(L, 1, NULL);
+    int op = luaL_checkoption(L, 2, "all", catnames);
     lua_pushstring(L, setlocale(cat[op], l));
     return 1;
 }
 
-/*
-** [系统调用] 程序退出函数
-**
-** 功能描述：
-** 终止当前程序的执行，并返回指定的退出状态码。
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** 此函数不会返回，程序将直接终止。
-**
-** 栈操作：
-** 输入：integer 退出状态码（可选，默认 EXIT_SUCCESS）
-** 输出：无（程序终止）
-**
-** 退出状态码：
-** - EXIT_SUCCESS (0)：成功退出
-** - EXIT_FAILURE (1)：失败退出
-** - 其他值：自定义退出状态
-**
-** 系统调用原理：
-** 使用 C 标准库的 exit() 函数：
-** - 立即终止程序执行
-** - 调用已注册的 atexit 函数
-** - 关闭所有打开的文件
-** - 刷新所有输出缓冲区
-** - 返回状态码给父进程
-**
-** 清理过程：
-** 1. 调用 atexit 注册的清理函数
-** 2. 刷新并关闭所有 stdio 流
-** 3. 删除 tmpfile 创建的临时文件
-** 4. 返回控制权给操作系统
-**
-** 与其他退出方式的区别：
-** - exit()：正常退出，执行清理
-** - _exit()：立即退出，不执行清理
-** - abort()：异常退出，可能生成核心转储
-**
-** 多线程考虑：
-** - exit() 会终止整个进程，包括所有线程
-** - 其他线程可能正在执行，需要谨慎使用
-**
-** 使用示例：
-** os.exit()        -- 成功退出
-** os.exit(0)       -- 明确指定成功退出
-** os.exit(1)       -- 失败退出
-** os.exit(42)      -- 自定义退出状态
-*/
-static int os_exit(lua_State *L)
-{
+/**
+ * @brief 退出程序
+ *
+ * 立即终止程序执行。这是os.exit函数的实现。
+ *
+ * @param L Lua状态机指针
+ * @return 永不返回（程序终止）
+ *
+ * @note 参数1：退出码（可选，默认EXIT_SUCCESS）
+ * @note 函数不返回，程序直接终止
+ *
+ * @see exit, luaL_optint, EXIT_SUCCESS
+ *
+ * 退出码含义：
+ * - 0或EXIT_SUCCESS：成功退出
+ * - 非0或EXIT_FAILURE：错误退出
+ * - 具体值的含义依赖于系统和约定
+ *
+ * 程序终止过程：
+ * 1. 调用atexit注册的清理函数
+ * 2. 刷新并关闭所有打开的流
+ * 3. 删除tmpfile创建的临时文件
+ * 4. 返回控制给主机环境
+ *
+ * 使用示例：
+ * ```lua
+ * os.exit()        -- 成功退出
+ * os.exit(0)       -- 明确指定成功退出
+ * os.exit(1)       -- 错误退出
+ * ```
+ *
+ * 注意事项：
+ * - 不会执行Lua的清理代码
+ * - 不会调用__gc元方法
+ * - 立即终止，无法恢复
+ * - 可能丢失未保存的数据
+ *
+ * 替代方案：
+ * - 使用return从主程序返回
+ * - 抛出错误让上层处理
+ * - 使用信号处理优雅退出
+ */
+static int os_exit (lua_State *L) {
     exit(luaL_optint(L, 1, EXIT_SUCCESS));
-    // 注意：此函数永远不会执行到这里
 }
 
-/*
-** [数据结构] 操作系统库函数注册表
-**
-** 数据结构说明：
-** 包含所有操作系统库函数的注册信息，按字母顺序排列。
-** 每个元素都是 luaL_Reg 结构体，包含函数名和对应的 C 函数指针。
-**
-** 函数分类：
-** - 时间处理：clock, date, difftime, time
-** - 文件操作：remove, rename, tmpname
-** - 进程控制：execute, exit
-** - 环境访问：getenv
-** - 本地化：setlocale
-**
-** 排序说明：
-** 函数按字母顺序排列，便于查找和维护。
-**
-** 功能覆盖：
-** - 基本文件系统操作
-** - 时间和日期处理
-** - 系统环境访问
-** - 进程生命周期管理
-** - 国际化支持
-*/
-static const luaL_Reg syslib[] =
-{
-    // 时间处理函数
-    {"clock",     os_clock},      // CPU 时间测量
-    {"date",      os_date},       // 日期格式化和时间表生成
-    {"difftime",  os_difftime},   // 时间差计算
-    {"time",      os_time},       // 时间戳获取和转换
+/** @} */ /* 结束本地化和程序控制文档组 */
 
-    // 进程控制函数
-    {"execute",   os_execute},    // 系统命令执行
-    {"exit",      os_exit},       // 程序退出
+/**
+ * @defgroup LibraryRegistration 库注册和初始化
+ * @brief 操作系统库的注册表和初始化机制
+ *
+ * 库注册和初始化系统定义了操作系统库的函数映射
+ * 和标准的Lua库初始化流程。
+ * @{
+ */
 
-    // 环境访问函数
-    {"getenv",    os_getenv},     // 环境变量获取
-
-    // 文件操作函数
-    {"remove",    os_remove},     // 文件删除
-    {"rename",    os_rename},     // 文件重命名/移动
-    {"tmpname",   os_tmpname},    // 临时文件名生成
-
-    // 本地化函数
-    {"setlocale", os_setlocale},  // 本地化设置
-
-    // 数组结束标记
+/**
+ * @brief 操作系统库函数注册表
+ *
+ * 定义了操作系统库中所有导出函数的名称和实现映射。
+ * 这是Lua库注册的标准模式。
+ *
+ * 注册的函数：
+ * - clock：CPU时间测量
+ * - date：日期时间格式化
+ * - difftime：时间差计算
+ * - execute：系统命令执行
+ * - exit：程序退出
+ * - getenv：环境变量获取
+ * - remove：文件删除
+ * - rename：文件重命名
+ * - setlocale：本地化设置
+ * - time：时间戳获取
+ * - tmpname：临时文件名生成
+ *
+ * 数组结构：
+ * - 每个元素包含函数名和函数指针
+ * - 以{NULL, NULL}结尾标记数组结束
+ * - 使用luaL_Reg结构体类型
+ *
+ * 设计模式：
+ * - 静态常量数组，编译时确定
+ * - 标准的Lua库注册格式
+ * - 便于维护和扩展
+ * - 支持自动化工具处理
+ */
+static const luaL_Reg syslib[] = {
+    {"clock",     os_clock},
+    {"date",      os_date},
+    {"difftime",  os_difftime},
+    {"execute",   os_execute},
+    {"exit",      os_exit},
+    {"getenv",    os_getenv},
+    {"remove",    os_remove},
+    {"rename",    os_rename},
+    {"setlocale", os_setlocale},
+    {"time",      os_time},
+    {"tmpname",   os_tmpname},
     {NULL, NULL}
 };
 
-/*
-** [核心] Lua 操作系统库初始化函数
-**
-** 功能描述：
-** 初始化 Lua 操作系统库，注册所有操作系统相关的函数。
-** 这是操作系统库的入口点，由 Lua 解释器在加载库时调用。
-**
-** 详细初始化流程：
-** 1. 创建 os 库表
-** 2. 注册所有操作系统函数到 os 表中
-** 3. 返回 os 库表供 Lua 使用
-**
-** 参数说明：
-** @param L - lua_State*：Lua 状态机指针
-**
-** 返回值：
-** @return int：返回值数量（总是1，表示 os 库表）
-**
-** 栈操作：
-** 在栈顶留下 os 库表
-**
-** 注册的函数：
-** - os.clock：CPU 时间测量
-** - os.date：日期格式化和时间表生成
-** - os.difftime：时间差计算
-** - os.execute：系统命令执行
-** - os.exit：程序退出
-** - os.getenv：环境变量获取
-** - os.remove：文件删除
-** - os.rename：文件重命名/移动
-** - os.setlocale：本地化设置
-** - os.time：时间戳获取和转换
-** - os.tmpname：临时文件名生成
-**
-** 设计说明：
-** - 提供跨平台的操作系统接口抽象
-** - 所有函数都基于 C 标准库，确保可移植性
-** - 统一的错误处理机制
-** - 支持多种时间和日期操作模式
-**
-** 安全考虑：
-** - os.execute 可能存在命令注入风险
-** - 文件操作需要适当的权限检查
-** - 临时文件操作存在竞态条件风险
-**
-** 性能特点：
-** - 直接调用系统 API，性能优异
-** - 最小化 Lua 栈操作开销
-** - 高效的错误处理机制
-**
-** 算法复杂度：O(n) 时间，其中 n 是函数数量，O(1) 空间
-**
-** 使用示例：
-** require("os")
-** print(os.date())              -- 当前日期时间
-** print(os.getenv("PATH"))      -- 环境变量
-** os.execute("ls -l")           -- 执行系统命令
-** print(os.clock())             -- CPU 时间
-*/
-LUALIB_API int luaopen_os(lua_State *L)
-{
-    // 注册操作系统库函数
+/**
+ * @brief 操作系统库初始化函数
+ *
+ * Lua操作系统库的标准初始化入口点。由Lua虚拟机
+ * 调用以加载和注册操作系统库。
+ *
+ * @param L Lua状态机指针
+ * @return 总是返回1（库表）
+ *
+ * @note 函数名遵循luaopen_<libname>约定
+ * @note 使用LUALIB_API导出声明
+ *
+ * @see luaL_register, LUA_OSLIBNAME
+ *
+ * 初始化流程：
+ * 1. **库注册**：
+ *    - 使用luaL_register注册函数表
+ *    - 创建名为"os"的全局表
+ *    - 将所有函数添加到表中
+ *
+ * 2. **返回库表**：
+ *    - 将库表留在栈顶
+ *    - 返回1表示有一个返回值
+ *    - 符合Lua库加载约定
+ *
+ * 调用方式：
+ * - 静态链接：直接调用luaopen_os
+ * - 动态加载：通过require "os"
+ * - 自动加载：Lua启动时自动加载
+ *
+ * 库名称：
+ * - 使用LUA_OSLIBNAME宏定义
+ * - 通常为"os"
+ * - 可在编译时配置
+ *
+ * 使用示例：
+ * ```c
+ * // 在C代码中手动加载
+ * luaopen_os(L);
+ *
+ * // 在Lua中使用
+ * local os = require "os"
+ * print(os.date())
+ * ```
+ *
+ * 标准约定：
+ * - 函数名格式：luaopen_<库名>
+ * - 返回值：库表（栈顶）
+ * - 副作用：设置全局变量
+ * - 错误处理：通过Lua错误机制
+ */
+LUALIB_API int luaopen_os (lua_State *L) {
     luaL_register(L, LUA_OSLIBNAME, syslib);
-
-    // 返回 os 库表
     return 1;
 }
+
+/** @} */ /* 结束库注册和初始化文档组 */
+
