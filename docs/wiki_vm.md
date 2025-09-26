@@ -18,20 +18,20 @@ Lua 虚拟机执行引擎 (lvm.c) 是整个 Lua 解释器的**核心心脏**，�
 ### 🎛️ 寄存器式 vs 栈式对比
 
 ```mermaid
-graph TB
-    subgraph "栈式虚拟机 (如Python/Java)"
-        A1[PUSH 1] --> A2[PUSH 2]
-        A2 --> A3[ADD]  
-        A3 --> A4[STORE a]
+flowchart TB
+    subgraph StackVM ["栈式虚拟机 (如Python/Java)"]
+        A1["PUSH 1"] --> A2["PUSH 2"]
+        A2 --> A3["ADD"]  
+        A3 --> A4["STORE a"]
     end
     
-    subgraph "寄存器式虚拟机 (Lua)"
-        B1[ADD R(0) R(1) R(2)] 
-        B1 --> B2[MOVE R(3) R(0)]
+    subgraph RegisterVM ["寄存器式虚拟机 (Lua)"]
+        B1["ADD R0 R1 R2"] 
+        B1 --> B2["MOVE R3 R0"]
     end
     
-    A4 -.->|需要4条指令| C[相同功能]
-    B2 -.->|只需2条指令| C
+    A4 -.->|"需要4条指令"| C["相同功能"]
+    B2 -.->|"只需2条指令"| C
 
     classDef stack fill:#ffebee,stroke:#d32f2f,color:#000
     classDef register fill:#e8f5e8,stroke:#4caf50,color:#000
@@ -177,35 +177,35 @@ reentry:  /* 重入点 - 处理函数调用 */
 
 ```mermaid
 flowchart TD
-    A[进入 luaV_execute] --> B[恢复执行上下文]
-    B --> C[取指令 Fetch]
-    C --> D[解码指令 Decode] 
-    D --> E[执行指令 Execute]
+    A["进入 luaV_execute"] --> B["恢复执行上下文"]
+    B --> C["取指令 Fetch"]
+    C --> D["解码指令 Decode"] 
+    D --> E["执行指令 Execute"]
     
-    E --> F{指令类型}
-    F -->|普通指令| G[更新寄存器/内存]
-    F -->|函数调用| H[保存上下文]
-    F -->|跳转指令| I[更新PC]
-    F -->|返回指令| J[恢复调用者上下文]
+    E --> F{"指令类型"}
+    F -->|"普通指令"| G["更新寄存器/内存"]
+    F -->|"函数调用"| H["保存上下文"]
+    F -->|"跳转指令"| I["更新PC"]
+    F -->|"返回指令"| J["恢复调用者上下文"]
     
-    G --> K[继续下一条指令]
-    H --> L[调用新函数]
-    I --> M[跳转到目标]
-    J --> N[返回调用者]
+    G --> K["继续下一条指令"]
+    H --> L["调用新函数"]
+    I --> M["跳转到目标"]
+    J --> N["返回调用者"]
     
     K --> C
     L --> A  
     M --> C
-    N --> O[函数执行完毕]
+    N --> O["函数执行完毕"]
     
     classDef fetch fill:#e3f2fd,stroke:#1976d2
-    classDef decode fill:#f3e5f5,stroke:#7b1fa2  
+    classDef decode fill:#f3e5f5,stroke:#7b1fa2
     classDef execute fill:#e8f5e8,stroke:#388e3c
     classDef control fill:#fff3e0,stroke:#f57c00
     
     class C fetch
     class D decode
-    class E,G execute  
+    class E,G execute
     class H,I,J,L,M,N control
 ```
 

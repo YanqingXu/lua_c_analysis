@@ -9,39 +9,39 @@ Lua 5.1.5 是一个精心设计的嵌入式脚本语言实现，它采用了多�
 ### 🏗️ 总体架构图
 
 ```mermaid
-graph TB
-    subgraph "用户接口层"
-        A[Lua 脚本] --> B[lua.exe 解释器]
-        A --> C[luac.exe 编译器]
+flowchart TB
+    subgraph UserInterface ["用户接口层"]
+        A["Lua 脚本"] --> B["lua.exe 解释器"]
+        A --> C["luac.exe 编译器"]
     end
     
-    subgraph "编译系统"
-        B --> D[词法分析器 llex.c]
-        D --> E[语法分析器 lparser.c] 
-        E --> F[代码生成器 lcode.c]
-        F --> G[字节码输出]
+    subgraph CompileSystem ["编译系统"]
+        B --> D["词法分析器 llex.c"]
+        D --> E["语法分析器 lparser.c"] 
+        E --> F["代码生成器 lcode.c"]
+        F --> G["字节码输出"]
     end
     
-    subgraph "执行系统"
-        G --> H[虚拟机引擎 lvm.c]
-        H --> I[执行控制 ldo.c]
-        I --> J[栈管理系统]
+    subgraph ExecuteSystem ["执行系统"]
+        G --> H["虚拟机引擎 lvm.c"]
+        H --> I["执行控制 ldo.c"]
+        I --> J["栈管理系统"]
     end
     
-    subgraph "内存管理"
-        H --> K[对象系统 lobject.c]
-        K --> L[垃圾回收器 lgc.c]
-        L --> M[内存分配器 lmem.c]
+    subgraph MemoryManagement ["内存管理"]
+        H --> K["对象系统 lobject.c"]
+        K --> L["垃圾回收器 lgc.c"]
+        L --> M["内存分配器 lmem.c"]
     end
     
-    subgraph "数据结构"
-        K --> N[表结构 ltable.c]
-        K --> O[字符串系统 lstring.c]
-        K --> P[函数对象 lfunc.c]
+    subgraph DataStructures ["数据结构"]
+        K --> N["表结构 ltable.c"]
+        K --> O["字符串系统 lstring.c"]
+        K --> P["函数对象 lfunc.c"]
     end
     
-    subgraph "C API 接口"
-        Q[C 应用程序] --> R[Lua C API lapi.c]
+    subgraph CAPI ["C API 接口"]
+        Q["C 应用程序"] --> R["Lua C API lapi.c"]
         R --> H
     end
 
@@ -49,13 +49,15 @@ graph TB
     classDef compileSystem fill:#f3e5f5,stroke:#7b1fa2,color:#000
     classDef executeSystem fill:#e8f5e8,stroke:#388e3c,color:#000
     classDef memorySystem fill:#fff3e0,stroke:#f57c00,color:#000
-    classDiff dataSystem fill:#fce4ec,stroke:#c2185b,color:#000
+    classDef dataSystem fill:#fce4ec,stroke:#c2185b,color:#000
+    classDef apiSystem fill:#fff8e1,stroke:#f9a825,color:#000
 
     class A,B,C userLayer
     class D,E,F,G compileSystem
-    class H,I,J executeSystem  
+    class H,I,J executeSystem
     class K,L,M memorySystem
     class N,O,P dataSystem
+    class Q,R apiSystem
 ```
 
 ## 🔧 核心设计理念
@@ -112,26 +114,15 @@ typedef union Value {
 
 ```mermaid
 stateDiagram-v2
-    [*] --> 白色: 新创建对象
-    白色 --> 灰色: 标记阶段
-    灰色 --> 黑色: 扫描完成
-    黑色 --> 白色: 新GC周期
-    白色 --> [*]: 清理回收
+    [*] --> White: 新创建对象
+    White --> Gray: 标记阶段
+    Gray --> Black: 扫描完成
+    Black --> White: 新GC周期
+    White --> [*]: 清理回收
 
-    note right of 白色
-        未被标记
-        潜在垃圾对象
-    end note
-    
-    note right of 灰色
-        已标记待扫描
-        在灰色队列中
-    end note
-    
-    note right of 黑色
-        已完成扫描
-        确认活跃对象
-    end note
+    White: 白色\n未被标记\n潜在垃圾对象
+    Gray: 灰色\n已标记待扫描\n在灰色队列中
+    Black: 黑色\n已完成扫描\n确认活跃对象
 ```
 
 ### 4. 📊 表的混合实现 (数组+哈希)
@@ -267,24 +258,24 @@ void luaV_execute(lua_State *L) {
 ## 🔗 模块间关系图
 
 ```mermaid
-graph LR
-    A[llex.c 词法分析] --> B[lparser.c 语法分析]
-    B --> C[lcode.c 代码生成]
-    C --> D[lvm.c 虚拟机执行]
+flowchart LR
+    A["llex.c 词法分析"] --> B["lparser.c 语法分析"]
+    B --> C["lcode.c 代码生成"]
+    C --> D["lvm.c 虚拟机执行"]
     
-    D --> E[ldo.c 执行控制]
-    E --> F[栈管理]
+    D --> E["ldo.c 执行控制"]
+    E --> F["栈管理"]
     
-    D --> G[lobject.c 对象系统]
-    G --> H[lgc.c 垃圾回收]
-    H --> I[lmem.c 内存管理]
+    D --> G["lobject.c 对象系统"]
+    G --> H["lgc.c 垃圾回收"]
+    H --> I["lmem.c 内存管理"]
     
-    G --> J[ltable.c 表实现]
-    G --> K[lstring.c 字符串]
-    G --> L[lfunc.c 函数对象]
+    G --> J["ltable.c 表实现"]
+    G --> K["lstring.c 字符串"]
+    G --> L["lfunc.c 函数对象"]
     
-    M[lapi.c C API] --> D
-    N[标准库] --> M
+    M["lapi.c C API"] --> D
+    N["标准库"] --> M
     
     classDef compile fill:#f9f,stroke:#333,stroke-width:2px
     classDef execute fill:#9f9,stroke:#333,stroke-width:2px  

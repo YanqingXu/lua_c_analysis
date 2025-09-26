@@ -19,30 +19,16 @@ Lua 5.1.5 的垃圾回收器采用**三色标记增量清除算法**，这是一
 
 ```mermaid
 stateDiagram-v2
-    [*] --> 白色: 新对象创建
-    白色 --> 灰色: 被根对象引用
-    灰色 --> 黑色: 完成子对象扫描
-    黑色 --> 白色: 新GC周期开始
+    [*] --> White: 新对象创建
+    White --> Gray: 被根对象引用
+    Gray --> Black: 完成子对象扫描
+    Black --> White: 新GC周期开始
     
-    白色 --> [*]: 清理阶段回收
+    White --> [*]: 清理阶段回收
     
-    note right of 白色
-        未被标记的对象
-        可能是垃圾对象
-        标记值: 0 或 1 (当前白色)
-    end note
-    
-    note right of 灰色
-        已被标记但未完成扫描
-        在灰色队列中等待处理
-        标记值: GRAYBIT
-    end note
-    
-    note right of 黑色
-        已完成扫描的活跃对象
-        所有引用都已标记
-        标记值: BLACKBIT
-    end note
+    White: 白色\n未被标记的对象\n可能是垃圾对象\n标记值: 0 或 1 (当前白色)
+    Gray: 灰色\n已被标记但未完成扫描\n在灰色队列中等待处理\n标记值: GRAYBIT
+    Black: 黑色\n已完成扫描的活跃对象\n所有引用都已标记\n标记值: BLACKBIT
 ```
 
 ### 🏷️ GC对象通用结构
