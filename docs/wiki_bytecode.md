@@ -162,27 +162,27 @@ flowchart TD
 
 ```mermaid
 gantt
-    title Lua 编译器各阶段处理时间分配
+    title Lua Compiler Phase Processing Time
     dateFormat X
     axisFormat %s
     
-    section 词法分析
-    文件读取 :done, lexread, 0, 1
-    Token识别 :done, lextoken, 1, 3
-    关键字检查 :done, lexkey, 3, 4
+    section Lexical Analysis
+    File Reading :done, lexread, 0, 1
+    Token Recognition :done, lextoken, 1, 3
+    Keyword Check :done, lexkey, 3, 4
     
-    section 语法分析
-    语法检查 :active, parsecheck, 4, 7
-    AST构建 :active, parseast, 7, 9
-    作用域分析 :active, parsescope, 9, 10
+    section Syntax Analysis
+    Grammar Check :active, parsecheck, 4, 7
+    AST Building :active, parseast, 7, 9
+    Scope Analysis :active, parsescope, 9, 10
     
-    section 代码生成
-    寄存器分配 :crit, codealloc, 10, 12
-    指令生成 :crit, codegen, 12, 15
-    优化处理 :crit, codeopt, 15, 16
+    section Code Generation
+    Register Allocation :crit, codealloc, 10, 12
+    Instruction Generation :crit, codegen, 12, 15
+    Optimization :crit, codeopt, 15, 16
     
-    section 输出阶段
-    字节码封装 :done, output, 16, 17
+    section Output
+    Bytecode Packaging :done, output, 16, 17
 ```
 
 ### 🏁 性能指标概览
@@ -402,31 +402,30 @@ void luaK_posfix(FuncState *fs, BinOpr op, expdesc *e1, expdesc *e2) {
 
 ```mermaid
 quadrantChart
-    title Lua 编译器性能对比
-    x-axis 低内存占用 --> 高内存占用
-    y-axis 低编译时间 --> 高编译时间
+    title Lua Compiler Performance Comparison
+    x-axis Low Memory --> High Memory
+    y-axis Low Compile Time --> High Compile Time
     
-    quadrant-1 高效但耗内存
-    quadrant-2 理想区域
-    quadrant-3 低效但省内存
-    quadrant-4 最优解决方案
+    quadrant-1 Efficient but Memory Intensive
+    quadrant-2 Ideal Zone
+    quadrant-3 Inefficient but Memory Saving
+    quadrant-4 Optimal Solution
     
-    Lua单遍编译: [0.15, 0.25]
-    传统AST方法: [0.75, 0.65]
-    多遍编译器: [0.85, 0.85]
-    解释型语言: [0.25, 0.15]
+    Lua Single Pass: [0.15, 0.25]
+    Traditional AST: [0.75, 0.65]
+    Multi Pass Compiler: [0.85, 0.85]
+    Interpreted Language: [0.25, 0.15]
 ```
 
 ### 📈 优化效果对比
 
-```mermaid
-xychart-beta
-    title "编译性能对比 (相对指标)"
-    x-axis [词法分析, 语法分析, 代码生成, 整体性能, 内存使用]
-    y-axis "性能指数" 0 --> 100
-    line [传统方法, 60, 45, 55, 50, 30]
-    line [Lua实现, 95, 85, 90, 92, 95]
-```
+| 性能指标 | 传统方法 | Lua实现 | 性能提升 |
+|----------|----------|---------|----------|
+| **词法分析** | 60 | 95 | 58% 提升 |
+| **语法分析** | 45 | 85 | 89% 提升 |
+| **代码生成** | 55 | 90 | 64% 提升 |
+| **整体性能** | 50 | 92 | 84% 提升 |
+| **内存使用** | 30 | 95 | 217% 提升 |
 
 | 编译阶段 | 时间复杂度 | 空间复杂度 | 优化技术 |
 |----------|------------|------------|----------|
@@ -610,15 +609,12 @@ static void patchlistaux(FuncState *fs, int list, int vtarget,
 
 ### 📊 与标准算法的对比
 
-```mermaid
-bar
-    title "编译器性能对比 (百分比)"
-    x-axis [编译速度, 内存效率, 代码质量, 维护性]
-    y-axis "性能评分" 0 --> 100
-    
-    "传统方法" : [65, 40, 75, 60]
-    "Lua实现" : [95, 90, 85, 90]
-```
+| 性能指标 | 传统方法 | Lua实现 | 性能提升 |
+|----------|----------|---------|----------|
+| **编译速度** | 65% | 95% | 46% 提升 |
+| **内存效率** | 40% | 90% | 125% 提升 |
+| **代码质量** | 75% | 85% | 13% 提升 |
+| **维护性** | 60% | 90% | 50% 提升 |
 
 ### 📈 技术细节对比
 
@@ -632,11 +628,11 @@ bar
 ### 🧪 实际应用效果
 
 ```mermaid
-pie title 编译器性能改进分布
-    "编译速度提升" : 35
-    "内存使用减少" : 30
-    "代码质量改善" : 20
-    "可维护性提升" : 15
+pie title "Compiler Performance Improvement Distribution"
+    "Compilation Speed" : 35
+    "Memory Usage Reduction" : 30
+    "Code Quality Improvement" : 20
+    "Maintainability Enhancement" : 15
 ```
 
 ### 📈 与标准算法的对比
@@ -1322,21 +1318,21 @@ static int addk (FuncState *fs, TValue *k, TValue *v) {
 
 ```mermaid
 journey
-    title Lua 代码编译之旅
-    section 源代码
-      编写Lua脚本: 5: 开发者
-      读取源文件: 3: 编译器
-    section 词法分析
-      Token识别: 4: 词法分析器
-      关键字检查: 4: 词法分析器
-    section 语法分析
-      表达式解析: 3: 语法分析器
-      语句分析: 3: 语法分析器
-    section 代码生成
-      寄存器分配: 4: 代码生成器
-      指令生成: 5: 代码生成器
-    section 输出
-      字节码文件: 5: 虚拟机
+    title Lua Code Compilation Journey
+    section Source Code
+      Write Lua Script: 5: Developer
+      Read Source File: 3: Compiler
+    section Lexical Analysis
+      Token Recognition: 4: Lexer
+      Keyword Check: 4: Lexer
+    section Syntax Analysis
+      Expression Parsing: 3: Parser
+      Statement Analysis: 3: Parser
+    section Code Generation
+      Register Allocation: 4: CodeGen
+      Instruction Generation: 5: CodeGen
+    section Output
+      Bytecode File: 5: VM
 ```
 
 ### 📋 编译阶段对比
@@ -1537,31 +1533,21 @@ flowchart TD
     style I fill:#fff3e0
 ```
 
-**🔗 跳转指令分析**：
+**🔗 跳转指令分析时序**：
 
-```mermaid
-gantt
-    title 条件语句字节码生成时序
-    dateFormat X
-    axisFormat %s
-    
-    section 条件检查
-    GETGLOBAL x: done, step1, 0, 1
-    LOADK 0: done, step2, 1, 2
-    LT compare: done, step3, 2, 3
-    JMP conditional: crit, step4, 3, 4
-    
-    section then分支
-    GETGLOBAL print: done, then1, 4, 5
-    LOADK positive: done, then2, 5, 6
-    CALL function: done, then3, 6, 7
-    JMP skip_else: done, then4, 7, 8
-    
-    section else分支
-    GETGLOBAL print: done, else1, 8, 9
-    LOADK non_positive: done, else2, 9, 10
-    CALL function: done, else3, 10, 11
-```
+| 阶段 | 指令 | 状态 | 时间 | 说明 |
+|------|------|------|------|------|
+| **条件检查** | GETGLOBAL x | 完成 | 0-1 | 获取变量x |
+| **条件检查** | LOADK 0 | 完成 | 1-2 | 加载常量0 |
+| **条件检查** | LT compare | 完成 | 2-3 | 比较操作 |
+| **条件检查** | JMP conditional | 关键 | 3-4 | 条件跳转 |
+| **Then分支** | GETGLOBAL print | 完成 | 4-5 | 获取print函数 |
+| **Then分支** | LOADK positive | 完成 | 5-6 | 加载正数提示 |
+| **Then分支** | CALL execute | 完成 | 6-7 | 执行函数调用 |
+| **Then分支** | JMP skip_else | 完成 | 7-8 | 跳过else分支 |
+| **Else分支** | GETGLOBAL print | 完成 | 8-9 | 获取print函数 |
+| **Else分支** | LOADK non_positive | 完成 | 9-10 | 加载非正数提示 |
+| **Else分支** | CALL execute | 完成 | 10-11 | 执行函数调用 |
 
 **<span style="color: #A23B72">源代码</span>**：
 ```lua
@@ -1699,22 +1685,22 @@ static void freereg (FuncState *fs, int reg) {
 
 ```mermaid
 journey
-    title 深入学习Lua字节码生成的建议路径
-    section 基础阶段
-      理解编译原理: 3: 学习者
-      熟悉Lua语法: 4: 学习者
-      阅读整体架构: 5: 学习者
-    section 进阶阶段
-      深入词法分析: 4: 学习者
-      研究语法分析: 3: 学习者
-      掌握代码生成: 3: 学习者
-    section 高级阶段
-      优化技术分析: 4: 学习者
-      实际项目应用: 5: 学习者
-      性能调优: 5: 学习者
-    section 专家阶段
-      扩展语言特性: 4: 学习者
-      设计新编译器: 5: 学习者
+    title Deep Learning Path for Lua Bytecode Generation
+    section Basic Stage
+      Understand Compilation Theory: 3: Learner
+      Familiar with Lua Syntax: 4: Learner
+      Read Overall Architecture: 5: Learner
+    section Intermediate Stage
+      Deep Lexical Analysis: 4: Learner
+      Study Syntax Analysis: 3: Learner
+      Master Code Generation: 3: Learner
+    section Advanced Stage
+      Optimization Analysis: 4: Learner
+      Real Project Application: 5: Learner
+      Performance Tuning: 5: Learner
+    section Expert Stage
+      Extend Language Features: 4: Learner
+      Design New Compiler: 5: Learner
 ```
 
 ### 📚 关键学习资源
