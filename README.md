@@ -75,15 +75,15 @@ lua_c_analysis/
 │   └── wiki_zio.md           # I/O抽象层
 └── 📁 questions/              # 深度问题解析
     ├── q_01_virtual_machine.md        # 虚拟机架构
-    ├── q_02_garbage_collection.md     # 垃圾回收算法
-    ├── q_03_table_implementation.md   # 表实现机制
+    ├── q_02_gc.md     # 垃圾回收算法
+    ├── q_03_table.md   # 表实现机制
     ├── q_04_string_interning.md       # 字符串驻留
     ├── q_05_coroutine_implementation.md # 协程实现
     ├── q_06_bytecode_generation.md    # 字节码生成
     ├── q_07_c_api_design.md           # C API设计
     ├── q_08_stack_management.md       # 栈管理机制
     ├── q_09_metamethods_metatables.md # 元表和元方法
-    └── q_10_performance_optimizations.md # 性能优化
+    └── q_10_performance.md # 性能优化
 ```
 
 ## 🎓 学习路径
@@ -98,7 +98,7 @@ lua_c_analysis/
 
 2. **核心概念**
    - 🎯 [虚拟机架构](questions/q_01_virtual_machine.md)
-   - 📦 [表实现机制](questions/q_03_table_implementation.md)
+   - 📦 [表实现机制](questions/q_03_table.md)
 
 3. **实践练习**
    - 编译运行源码
@@ -109,7 +109,7 @@ lua_c_analysis/
 **目标**：深入理解核心算法和实现技巧
 
 1. **深入核心机制**
-   - 🔄 [垃圾回收机制](questions/q_02_garbage_collection.md)
+   - 🔄 [垃圾回收机制](questions/q_02_gc.md)
    - 🏃 [协程实现](questions/q_05_coroutine_implementation.md)
    - 🔗 [C API设计](questions/q_07_c_api_design.md)
 
@@ -119,7 +119,7 @@ lua_c_analysis/
    - ⚙️ [字节码生成](questions/q_06_bytecode_generation.md)
 
 3. **性能优化**
-   - 🚀 [性能优化技术](questions/q_10_performance_optimizations.md)
+   - 🚀 [性能优化技术](questions/q_10_performance.md)
    - 📊 [栈管理机制](questions/q_08_stack_management.md)
 
 ### 🌳 专家路径（4-8周）

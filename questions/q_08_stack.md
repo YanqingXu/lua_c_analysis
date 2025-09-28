@@ -4,7 +4,7 @@
 > **难度等级**：⭐⭐⭐⭐ (高级)  
 > **预计阅读时间**：50-70分钟  
 > **前置知识**：C语言基础、数据结构、内存管理概念  
-> **关联文档**：[虚拟机架构](q_01_virtual_machine_optimized.md) | [垃圾回收](q_02_garbage_collection_optimized.md) | [C API设计](q_07_c_api_design_optimized.md)
+> **关联文档**：[虚拟机架构](q_01_vm.md) | [垃圾回收](q_02_gc.md) | [C API设计](q_07_c_api.md)
 
 ## 📋 文档导航
 

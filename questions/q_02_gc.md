@@ -4,7 +4,7 @@
 > **难度等级**：⭐⭐⭐⭐⭐ (专家级)  
 > **预计阅读时间**：60-90分钟  
 > **前置知识**：内存管理基础、图论基本概念、并发编程概念  
-> **关联文档**：[虚拟机架构](q_01_virtual_machine_optimized.md) | [表实现](q_03_table_implementation.md) | [性能优化](q_10_performance_optimizations.md)
+> **关联文档**：[虚拟机架构](q_01_vm.md) | [表实现](q_03_table.md) | [性能优化](q_10_performance.md)
 
 ## 📋 文档导航
 

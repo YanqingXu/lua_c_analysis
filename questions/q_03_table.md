@@ -17,10 +17,10 @@
 ```
 
 ### 🔗 相关文档链接
-- [q_01_virtual_machine.md](./q_01_virtual_machine.md) - 虚拟机基础
-- [q_02_garbage_collection.md](./q_02_garbage_collection.md) - 垃圾回收机制
-- [q_08_stack_management.md](./q_08_stack_management.md) - 栈管理
-- [q_10_performance_optimizations.md](./q_10_performance_optimizations.md) - 性能优化
+- [q_01_vm.md](./q_01_vm.md) - 虚拟机基础
+- [q_02_gc.md](./q_02_gc.md) - 垃圾回收机制
+- [q_08_stack.md](./q_08_stack.md) - 栈管理
+- [q_10_performance.md](./q_10_performance.md) - 性能优化
 
 ---
 
@@ -1266,9 +1266,9 @@ end
 
 ### 🔗 相关主题深入
 1. **[虚拟机实现](./q_01_virtual_machine.md)** - 了解表在VM中的作用
-2. **[垃圾回收机制](./q_02_garbage_collection.md)** - 表的内存管理和弱引用
+2. **[垃圾回收机制](./q_02_gc.md)** - 表的内存管理和弱引用
 3. **[字符串驻留](./q_04_string_interning.md)** - 字符串键的优化
-4. **[性能优化](./q_10_performance_optimizations.md)** - 整体性能调优
+4. **[性能优化](./q_10_performance.md)** - 整体性能调优
 
 ### 📖 推荐阅读
 - Lua源码：`ltable.c`, `ltable.h` - 表实现核心

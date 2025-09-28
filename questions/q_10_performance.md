@@ -4,7 +4,7 @@
 > **难度等级**：⭐⭐⭐⭐⭐ (专家级)  
 > **预计阅读时间**：90-120分钟  
 > **前置知识**：编译器原理、计算机体系结构、操作系统、算法与数据结构  
-> **关联文档**：[虚拟机架构](q_01_virtual_machine_optimized.md) | [内存管理](wiki_memory.md) | [垃圾回收](q_02_garbage_collection_optimized.md) | [字节码](wiki_bytecode.md)
+> **关联文档**：[虚拟机架构](q_01_vm.md) | [内存管理](wiki_memory.md) | [垃圾回收](q_02_gc.md) | [字节码](wiki_bytecode.md)
 
 ## 📋 文档导航
 

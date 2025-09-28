@@ -17,10 +17,10 @@
 ```
 
 ### 🔗 相关文档链接
-- [q_01_virtual_machine.md](./q_01_virtual_machine.md) - 虚拟机基础架构
-- [q_02_garbage_collection.md](./q_02_garbage_collection.md) - 字符串GC管理
-- [q_03_table_implementation.md](./q_03_table_implementation.md) - 字符串作为表键
-- [q_10_performance_optimizations.md](./q_10_performance_optimizations.md) - 整体性能优化
+- [q_01_vm.md](./q_01_vm.md) - 虚拟机基础架构
+- [q_02_gc.md](./q_02_gc.md) - 字符串GC管理
+- [q_03_table.md](./q_03_table.md) - 字符串作为表键
+- [q_10_performance.md](./q_10_performance.md) - 整体性能优化
 
 ---
 
@@ -1783,9 +1783,9 @@ profiler:generate_report()
 
 ### 🔗 相关主题深入
 1. **[虚拟机实现](./q_01_virtual_machine.md)** - 字符串在VM中的处理
-2. **[垃圾回收机制](./q_02_garbage_collection.md)** - 字符串的生命周期管理
-3. **[表实现机制](./q_03_table_implementation.md)** - 字符串作为表键的优化
-4. **[性能优化](./q_10_performance_optimizations.md)** - 整体性能调优策略
+2. **[垃圾回收机制](./q_02_gc.md)** - 字符串的生命周期管理
+3. **[表实现机制](./q_03_table.md)** - 字符串作为表键的优化
+4. **[性能优化](./q_10_performance.md)** - 整体性能调优策略
 
 ### 📖 推荐阅读
 - **Lua源码**：`lstring.c`, `lstring.h` - 字符串驻留核心实现
