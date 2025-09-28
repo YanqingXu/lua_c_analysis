@@ -1,6 +1,6 @@
 # Lua字节码生成与执行机制深度解析 ⚙️
 
-> **DeepWiki优化版本** | 原文档: `q_06_bytecode_generation.md`  
+> **DeepWiki优化版本** | 原文档: `q_06_bytecode.md`  
 > 本文档深入解析Lua 5.1.5中字节码生成的完整流程，包含编译架构图、指令格式分析和实践工具
 
 ---

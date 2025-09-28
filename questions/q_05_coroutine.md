@@ -1,6 +1,6 @@
 # Lua协程(Coroutine)实现机制深度解析 🔄
 
-> **DeepWiki优化版本** | 原文档: `q_05_coroutine_implementation.md`  
+> **DeepWiki优化版本** | 原文档: `q_05_coroutine.md`  
 > 本文档深入解析Lua 5.1.5中协程实现的核心机制，包含系统架构图、实践实验和调试工具
 
 ---
