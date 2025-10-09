@@ -228,9 +228,6 @@ sequenceDiagram
     App->>Buff: luaZ_freebuffer()
     Buff->>Mem: 释放内存
     Note over Buff: buffer=NULL, buffsize=0
-    
-    style Buff fill:#fff3e0,stroke:#e65100
-    style Mem fill:#e1f5ff,stroke:#01579b
 ```
 
 ## 🔑 关键函数详细分析
@@ -919,8 +916,6 @@ sequenceDiagram
     IO-->>Thread: I/O完成
     Thread->>Lock: lua_lock(重新获取)
     Note over Thread: 继续处理...
-    
-    style IO fill:#fff3e0,stroke:#e65100
 ```
 
 **✅ 优点**:
@@ -1201,9 +1196,6 @@ sequenceDiagram
         Lua->>App: longjmp (异常)
         Note over App: 程序跳转到<br/>错误处理
     end
-    
-    style Mem fill:#fff3e0,stroke:#e65100
-    style Lua fill:#ffcdd2,stroke:#c62828
 ```
 
 **✅ 优点**:
