@@ -32,6 +32,16 @@
 
 ---
 
+### 🧭 版本声明与源码锚点
+
+本文严格基于本仓库内的 Lua 5.1.5 源码进行讲解：
+- 指令与编码：`src/lopcodes.h`
+- 执行引擎：`src/lvm.c`（核心循环 `luaV_execute`）
+- 调用/返回/保护/协程：`src/ldo.c`（如 `luaD_precall`、`luaD_poscall`、`luaD_call`、`lua_resume`、`lua_yield`、`luaD_pcall`）
+- 运行时状态：`src/lstate.h`（`lua_State`、`CallInfo` 与 `global_State`）
+
+注：文中代码片段多为“字段选摘/伪代码”以便学习，精确实现以源码为准。
+
 ## 🌟 核心概念速览
 
 ### 基本架构理念
@@ -138,33 +148,31 @@ graph TB
 **作用**：虚拟机的"控制中心"，管理所有运行时状态
 
 ```c
-// lstate.h - Lua状态机结构（核心字段详解）
+// lstate.h - 字段选摘（以本仓库 5.1.5 源码为准）
 struct lua_State {
-  CommonHeader;                    /* GC头部信息 */
-
-  /* 🎯 执行状态核心 */
-  lu_byte status;                  /* 线程状态：LUA_OK, LUA_YIELD, LUA_ERRRUN等 */
-  StkId top;                       /* 栈顶指针：指向下一个可用位置 */
-  StkId stack;                     /* 栈底指针：栈的起始地址 */
-  StkId stack_last;                /* 栈结束指针：最后可用位置 */
-  int stacksize;                   /* 当前栈总容量 */
-
-  /* 📞 函数调用管理 */
-  CallInfo *ci;                    /* 当前调用信息 */
-  CallInfo base_ci;                /* 基础调用信息 */
-  const Instruction *oldpc;        /* 上一条指令位置 */
-
-  /* 🌐 全局状态和错误处理 */
-  global_State *l_G;               /* 全局状态指针 */
-  struct lua_longjmp *errorJmp;    /* 错误跳转点 */
-  
-  /* 🔗 闭包和upvalue */
-  UpVal *openupval;                /* 开放upvalue链表 */
-  
-  /* 🪝 调试支持 */
-  lua_Hook hook;                   /* 调试钩子函数 */
-  l_signalT hookmask;             /* 钩子事件掩码 */
-  int hookcount;                  /* 钩子计数器 */
+  CommonHeader;            /* GC 头 */
+  lu_byte status;          /* 状态：OK/YIELD/ERR* */
+  StkId top;               /* 值栈顶（首个空槽） */
+  StkId base;              /* 当前函数的栈基址 */
+  global_State *l_G;       /* 全局状态 */
+  CallInfo *ci;            /* 当前调用帧 */
+  const Instruction *savedpc; /* 当前函数 PC */
+  StkId stack_last;        /* 值栈上界（最后可用） */
+  StkId stack;             /* 值栈起始地址 */
+  CallInfo *end_ci;        /* CallInfo 上界 */
+  CallInfo *base_ci;       /* CallInfo 起始 */
+  int stacksize;           /* 值栈容量 */
+  int size_ci;             /* 调用帧容量 */
+  unsigned short nCcalls;  /* C 调用嵌套深度 */
+  unsigned short baseCcalls; /* 协程基线深度 */
+  lu_byte hookmask;        /* 钩子掩码 */
+  lu_byte allowhook;       /* 允许钩子 */
+  int hookcount, basehookcount; /* 计数钩子 */
+  lua_Hook hook;           /* 钩子函数 */
+  TValue l_gt, env;        /* 线程全局表/环境 */
+  GCObject *openupval;     /* 开放 upvalue 链表 */
+  struct lua_longjmp *errorJmp; /* 错误跳转点 */
+  ptrdiff_t errfunc;       /* 错误处理函数位置 */
 };
 ```
 
@@ -201,28 +209,18 @@ graph LR
 ```
 
 ```c
-// lstate.h - 调用信息结构
+// lstate.h - 调用信息（以本仓库 5.1.5 源码为准）
 typedef struct CallInfo {
-  StkId func;                      /* 被调用函数在栈中的位置 */
-  StkId top;                       /* 此函数的栈顶限制 */
-  struct CallInfo *previous, *next; /* 双向链表：构成调用栈 */
-
-  union {
-    struct {  /* Lua函数专用 */
-      StkId base;                  /* 栈基址：局部变量起始 */
-      const Instruction *savedpc;  /* 程序计数器 */
-    } l;
-    struct {  /* C函数专用 */
-      lua_KFunction k;             /* 延续函数 */
-      ptrdiff_t old_errfunc;       
-      lua_KContext ctx;            /* 延续上下文 */
-    } c;
-  } u;
-
-  short nresults;                  /* 期望返回值数量 */
-  unsigned short callstatus;       /* 调用状态标志 */
+  StkId base;              /* 当前函数的栈基址 */
+  StkId func;              /* 函数对象在栈中的位置 */
+  StkId top;               /* 此函数的栈顶上界 */
+  const Instruction *savedpc; /* 当前执行位置 */
+  int nresults;            /* 期望返回值数量（-1=多返回） */
+  int tailcalls;           /* 尾调用计数（用于钩子/调试） */
 } CallInfo;
 ```
+
+对照源码可知：本仓库的 `CallInfo` 采用“扁平字段”（base/func/top/savedpc 等直接作为成员），与某些版本将 Lua/C 调用差异放入 `union` 的实现不同。本文以本仓库实现为准。
 
 ### 3. 📝 函数原型 (Proto)
 
@@ -334,7 +332,8 @@ void luaV_execute (lua_State *L) {
         int b = GETARG_B(i);            
         int nresults = GETARG_C(i) - 1; 
         if (b != 0) L->top = ra+b;      
-        L->savedpc = pc;                
+        /* 注意：真实实现保存/恢复 PC 在 CallInfo.savedpc 上，
+           此处为示意伪代码，精确行为见 ldo.c/lvm.c */
         
         switch (luaD_precall(L, ra, nresults)) {
           case PCRLUA: {
@@ -358,6 +357,30 @@ void luaV_execute (lua_State *L) {
   }
 }
 ```
+
+### 🧵 调用与返回（基于 ldo.c）
+
+调用路径要点（`src/ldo.c`）：
+- `luaD_precall(L, func, nresults)`
+  - 若被调是 Lua 闭包：检查栈空间（`p->maxstacksize`）、处理固定参数/变参（`adjust_varargs`）、新建 `CallInfo`、设置 `base/top/savedpc`，并在启用钩子时做一次 PC 暂增再还原（`L->savedpc++` → 调 `luaD_callhook(..., LUA_HOOKCALL, ...)` → 还原）。返回标识 `PCRLUA`。
+  - 若被调是 C 闭包：直接创建调用帧，执行 C 函数（期间会解/加锁），返回结果后进入 `luaD_poscall` 归并返回值。返回标识 `PCRC` 或 `PCRYIELD`。
+- `luaD_poscall(L, firstResult)` 负责从子调用将返回值搬运到“函数位置”起，补齐/截断、回退 `CallInfo`，恢复调用者的 `base/savedpc/top`。
+- `luaD_call(L, func, nResults)` 是对外入口：维护 `nCcalls`（C 栈保护），Lua 函数则进入 `luaV_execute` 主循环。
+
+Yield 边界（`lua_yield`）：不得跨越 metamethod/C-call 边界让出（见 `lua_yield` 中的 `if (L->nCcalls > L->baseCcalls)` 检查）。
+
+调试钩子（`luaD_callhook`）：进入/返回/尾返回都会依掩码触发。注意 Lua 函数调用钩子时，PC 有一次“向前假增”的技巧，调用后恢复，确保行号/事件正确。
+
+### 🧯 错误处理与保护模式（基于 ldo.c）
+
+- 异常/保护：`luaD_rawrunprotected` 通过 `setjmp/longjmp`（`struct lua_longjmp`）实现保护执行；出错时 `luaD_throw` 跳转回最近的保护点。
+- `luaD_pcall` 是保护调用的高层封装：保存/恢复调用栈、基址、PC、钩子状态、错误函数等；错误对象注入使用 `luaD_seterrorobj`。
+- 栈/帧增长与修正：`luaD_reallocstack`/`luaD_reallocCI` 并配合 `correctstack` 修正所有指针（含开放 upvalue）。
+
+### 🧬 协程恢复与让出（基于 ldo.c）
+
+- `lua_resume`：新协程先 `luaD_precall` 进入主函数；挂起协程恢复时根据当前帧类型继续未完成的 `OP_CALL/OP_TAILCALL` 或直接回到 Lua 函数执行点，然后进入 `luaV_execute`。
+- `lua_yield`：调整 `base` 指向返回值起始位置，设置 `LUA_YIELD` 并返回 -1；边界检查保证不跨越 C 调用/元方法。
 
 ### 🎯 指令格式与解码
 
@@ -603,6 +626,10 @@ vmcase(OP_NEWTABLE) {
 }
 ```
 
+其他常见 GC 协作点：
+- 字符串连接 `luaV_concat` 结尾的 `luaC_checkGC(L)`
+- 新对象写入时的写屏障（见 `lgc.c/lgc.h` 相关）
+
 ---
 
 ## ❓ 面试高频问题
@@ -714,15 +741,17 @@ graph TB
 ## 📋 核心源文件清单
 
 ### 🎯 主要文件
-- **`lvm.c/lvm.h`** - 虚拟机执行引擎核心
-- **`lstate.c/lstate.h`** - Lua状态和线程管理
-- **`ldo.c/ldo.h`** - 执行控制和栈管理
-- **`lopcodes.c/lopcodes.h`** - 指令集定义
+- **`lvm.c`** - 虚拟机执行引擎核心（`luaV_execute`、元方法路径等）
+- **`lstate.h`** - Lua状态和线程管理（`lua_State`、`CallInfo`、`global_State`）
+- **`ldo.c` / `ldo.h`** - 执行控制：预/后调用、保护模式、协程
+- **`lopcodes.h`** - 指令集与编码宏、RK 寻址
 
 ### 🔧 支撑文件  
 - **`lfunc.c/lfunc.h`** - 函数和闭包管理
 - **`ldebug.c/ldebug.h`** - 调试支持
 - **`lobject.c/lobject.h`** - 对象类型系统
 - **`lgc.c/lgc.h`** - 垃圾回收实现
+
+—— 若与外部资料有出入，以本仓库源码为准（Lua 5.1.5 变体）。
 
 ---
