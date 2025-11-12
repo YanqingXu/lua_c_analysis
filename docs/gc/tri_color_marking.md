@@ -129,9 +129,6 @@ end
 2015年： Lua 5.3引入分代回收（实验性）
 ```
 
-2015年： Lua 5.3引入分代回收（实验性）
-
-
 ---
 
 ## 2. 三色抽象模型
@@ -904,13 +901,6 @@ void demonstrate_queue_evolution() {
     grayagain = [B] → NULL
     weak     = [A] → NULL
     
-    // 原子阶段：处理grayagain和weak
-    // ...
-}
-```
-
-
-
     // 原子阶段：处理grayagain和weak
     // ...
 }
