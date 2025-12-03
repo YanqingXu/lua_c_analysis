@@ -1,0 +1,8 @@
+# Build output directories
+lua/lua/
+lua/x64/
+luac/x64/
+
+# Visual Studio
+.vs/
+
