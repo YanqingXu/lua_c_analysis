@@ -1,0 +1,23 @@
+
+main <test_factorial.lua:0,0> (7 instructions, 28 bytes at 0000024003A5DE60)
+0+ params, 2 slots, 0 upvalues, 0 locals, 2 constants, 1 function
+	1	[6]	CLOSURE  	0 0	; 0000024003A74DA0
+	2	[1]	SETGLOBAL	0 -1	; factorial
+	3	[7]	GETGLOBAL	0 -1	; factorial
+	4	[7]	LOADK    	1 -2	; 5
+	5	[7]	TAILCALL 	0 2 0
+	6	[7]	RETURN   	0 0
+	7	[7]	RETURN   	0 1
+
+function <test_factorial.lua:1,6> (10 instructions, 40 bytes at 0000024003A74DA0)
+1 param, 3 slots, 0 upvalues, 1 local, 2 constants, 0 functions
+	1	[2]	LE       	0 0 -1	; - 1
+	2	[2]	JMP      	2	; to 5
+	3	[3]	LOADK    	1 -1	; 1
+	4	[3]	RETURN   	1 2
+	5	[5]	GETGLOBAL	1 -2	; factorial
+	6	[5]	SUB      	2 0 -1	; - 1
+	7	[5]	CALL     	1 2 2
+	8	[5]	MUL      	1 0 1
+	9	[5]	RETURN   	1 2
+	10	[6]	RETURN   	0 1
