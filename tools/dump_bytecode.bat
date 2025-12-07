@@ -2,7 +2,7 @@
 REM ==================================================================
 REM Lua 5.1.5 Bytecode Dumper (lua_c_analysis)
 REM ------------------------------------------------------------------
-REM Usage:
+REM Usage:
 REM   dump_bytecode.bat <script.lua> [full]
 REM
 REM This script:
@@ -18,6 +18,10 @@ if "%~1"=="" (
 )
 
 setlocal
+
+REM Change to script directory (lua_c_analysis/tools/) then go to lua_c_analysis/
+cd /d "%~dp0"
+cd ..
 
 REM ------------------------------------------------------------------
 REM Set up MSVC build environment (optional)
@@ -52,7 +56,7 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM Clean intermediate object files (keep bin/*.lib and executables)
+REM Clean intermediate object files (keep bin/*.lib and executables)
 for %%F in (*.obj) do del "%%F" >nul 2>&1
 
 echo [INFO] Dumping bytecode for "%INPUT%" ...
