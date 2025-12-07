@@ -3,6 +3,7 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="../luac/luac.vcxproj" />
-  <Project Path="lua.vcxproj" />
+  <Project Path="../bytecode_dump/bytecode_dump.vcxproj" Id="82ebfd82-9fc0-4fe3-bf45-dfeff4313dd7" />
+  <Project Path="../luac/luac.vcxproj" Id="01b32d82-f2d8-4a69-8028-a05410b35261" />
+  <Project Path="lua.vcxproj" Id="cfbbc9ef-9b46-4bc6-ad99-dad9474ec5ac" />
 </Solution>
