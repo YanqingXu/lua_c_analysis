@@ -31,14 +31,14 @@ static void dump_proto(const Proto *f, int full)
 
 int main(int argc, char **argv)
 {
-    // if (argc < 2) {
-    //     fprintf(stderr, "Usage: %s <script.lua> [full]\n", argv[0]);
-    //     return 1;
-    // }
+     if (argc < 2) {
+         fprintf(stderr, "Usage: %s <script.lua> [full]\n", argv[0]);
+         return 1;
+     }
 
-    // const char *filename = argv[1];
-    const char *filename = (argc >= 2) ? argv[1] : "E:\\Programming2\\lua_in_cpp\\lua_c_analysis\\test_factorial.lua";
-    //int full = (argc > 2) ? 1 : 0;  /* non-zero means full output */
+    const char *filename = argv[1];
+    // const char *filename = (argc >= 2) ? argv[1] : "E:\\Programming2\\lua_in_cpp\\lua_c_analysis\\test_factorial.lua";
+    int full = (argc > 2) ? 1 : 0;  /* non-zero means full output */
 
     lua_State *L = lua_open();  /* create Lua state */
     if (L == NULL) {
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
     }
 
     /* print bytecode (recursively including all sub-functions) */
-    dump_proto(f, 1);
+    dump_proto(f, full);
 
     lua_close(L);
     return 0;

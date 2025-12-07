@@ -18,7 +18,7 @@
     <ClCompile Include="..\src\print.c">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="..\tests\bytecode_dumper.c">
+    <ClCompile Include="bytecode_dumper.c">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
